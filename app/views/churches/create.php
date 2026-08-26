@@ -172,7 +172,7 @@ use App\Utilities\Security;
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
-                                <div class="form-text">Select from registered pastors. Only users with the Pastor role appear here.</div>
+                                <div class="form-text">Select from registered pastors. Only users with the Pastor role appear here. To assign a head pastor, please use the church profile page after creation.</div>
                             </div>
                         </div>
                     </div>

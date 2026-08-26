@@ -103,6 +103,11 @@ class OutreachReport extends BaseModel {
         return $m->findAll(['outreach_report_id' => $reportId], 'sort_order ASC, id ASC');
     }
 
+    public function getImages($reportId) {
+        $m = new OutreachImage();
+        return $m->getByReportId($reportId);
+    }
+
     public static function getStatuses() {
         return [
             'draft' => 'Draft',

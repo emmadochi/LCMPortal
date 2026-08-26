@@ -48,6 +48,10 @@ class Router {
     }
 
     public function dispatch() {
+        // Run global security headers middleware on all responses
+        $headers = new \App\Middleware\SecurityHeadersMiddleware();
+        $headers->handle(function() {});
+
         $request = new Request();
         $method = $request->method();
         $uri = $request->uri();
@@ -59,6 +63,12 @@ class Router {
 
         foreach ($this->routes as $route) {
             if ($route['method'] === $method && $this->matchRoute($route['uri'], $uri)) {
+                // Run global CSRF check for state-changing requests
+                if (in_array($method, ['POST', 'PUT', 'DELETE'])) {
+                    $csrf = new \App\Middleware\CSRFMiddleware();
+                    $csrf->handle(function() {});
+                }
+
                 // Execute middleware
                 foreach ($route['middleware'] as $middleware) {
                     if (is_string($middleware)) {

@@ -11,9 +11,27 @@ $userRole = $session->get('user_role');
             <div class="card-header d-flex justify-content-between align-items-center">
                 <div>
                     <h4 class="card-title mb-0">Units</h4>
-                    <p class="card-title-desc mb-0">Manage all church units and departments</p>
+                    <p class="card-title-desc mb-0">
+                        <?php if ($showMyUnitsFilter ?? false): ?>
+                            <?= $isMyUnitsView ?? false ? 'Your assigned units' : 'All church units' ?>
+                        <?php else: ?>
+                            Manage all church units and departments
+                        <?php endif; ?>
+                    </p>
                 </div>
                 <div class="d-flex gap-2">
+                    <?php if ($showMyUnitsFilter ?? false): ?>
+                        <?php if ($isMyUnitsView ?? false): ?>
+                            <a href="<?= AssetHelper::url('units') ?>" class="btn btn-outline-primary">
+                                <i data-feather="list" class="me-1"></i> View All Units
+                            </a>
+                        <?php else: ?>
+                            <a href="<?= AssetHelper::url('units?my_units=1') ?>" class="btn btn-primary">
+                                <i data-feather="check-square" class="me-1"></i> Show My Units Only
+                            </a>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                    
                     <a href="<?= AssetHelper::url('units/export?format=csv') ?>" class="btn btn-sm btn-success">
                         <i data-feather="download" class="me-1"></i> Export CSV
                     </a>
@@ -23,7 +41,7 @@ $userRole = $session->get('user_role');
                     <a href="<?= AssetHelper::url('units/export?format=pdf') ?>" class="btn btn-sm btn-danger">
                         <i data-feather="file-text" class="me-1"></i> Export PDF
                     </a>
-                    <?php if ($userRole === 'admin' || $userRole === 'director'): ?>
+                    <?php if ($session->hasPermission('manage_units')): ?>
                         <a href="<?= AssetHelper::url('units/create') ?>" class="btn btn-primary">
                             <i data-feather="plus-circle" class="me-1"></i> Create Unit
                         </a>

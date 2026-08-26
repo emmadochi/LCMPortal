@@ -6,7 +6,7 @@ use App\Models\FollowUp;
 
 class User extends BaseModel {
     protected $table = 'users';
-    protected $fillable = ['email', 'password', 'first_name', 'last_name', 'profile_picture', 'age_group', 'role', 'status'];
+    protected $fillable = ['email', 'password', 'first_name', 'last_name', 'profile_picture', 'age_group', 'phone', 'address', 'role', 'church_id', 'status'];
 
     /**
      * Age group options for attendance segment reporting (no exact age required).
@@ -196,8 +196,17 @@ class User extends BaseModel {
             return true;
         }
 
-        // Define role-based permissions
+        // Get base role permissions
         $permissions = $this->getRolePermissions($user['role']);
+        
+        // Check if user is also a unit director (for pastors who direct units)
+        $directorUnits = $this->getDirectorUnits($userId);
+        if (!empty($directorUnits)) {
+            $directorPermissions = $this->getRolePermissions('director');
+            $permissions = array_merge($permissions, $directorPermissions);
+            $permissions = array_unique($permissions);
+        }
+        
         return in_array($permission, $permissions);
     }
 
@@ -216,7 +225,20 @@ class User extends BaseModel {
                 'manage_projects',
                 'manage_properties',
                 'view_dashboard',
-                'send_broadcast_notifications'
+                'send_broadcast_notifications',
+                'manage_attendance',
+                'manage_follow_ups'
+            ],
+            'head_pastor' => [
+                'manage_church_details',
+                'view_membership_dashboard',
+                'manage_church_finance',
+                'manage_church_property',
+                'manage_attendance',
+                'manage_reports',
+                'send_church_notifications',
+                'view_dashboard',
+                'view_all_reports'
             ],
             'director' => [
                 'manage_units',
@@ -225,7 +247,9 @@ class User extends BaseModel {
                 'manage_unit_finance',
                 'manage_unit_media',
                 'manage_unit_projects',
-                'view_dashboard'
+                'view_dashboard',
+                'manage_unit_attendance',
+                'manage_unit_follow_ups'
             ],
             'officer' => [
                 'create_reports',
@@ -233,8 +257,11 @@ class User extends BaseModel {
                 'view_dashboard'
             ],
             'pastor' => [
+                'manage_reports',
                 'view_all_reports',
-                'view_dashboard'
+                'view_dashboard',
+                'manage_attendance',
+                'manage_follow_ups'
             ],
             'user' => [
                 'view_dashboard'
@@ -285,6 +312,30 @@ class User extends BaseModel {
         $stmt->bind_param($types, ...$unitIds);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Check if user is any type of pastor (head pastor or regular pastor)
+     */
+    public function isPastor($userId) {
+        $user = $this->find($userId);
+        if (!$user) {
+            return false;
+        }
+        
+        return in_array($user['role'], ['head_pastor', 'pastor']);
+    }
+
+    /**
+     * Check if user is a head pastor
+     */
+    public function isHeadPastor($userId) {
+        $user = $this->find($userId);
+        if (!$user) {
+            return false;
+        }
+        
+        return $user['role'] === 'head_pastor';
     }
 
     /**
@@ -458,5 +509,79 @@ class User extends BaseModel {
             'score' => $score
         ];
     }
+
+    /**
+     * Get giving history for a specific user (linked via member_id)
+     */
+    public function getPersonalGivingSummary($userId) {
+        $summary = ['total' => 0.0, 'this_year' => 0.0, 'last_transaction' => null];
+        try {
+            $db = $this->db;
+            
+            // Total Giving
+            $stmt = $db->prepare("SELECT SUM(amount) as total FROM finance_records WHERE member_id = ? AND transaction_type = 'income'");
+            $stmt->bind_param("i", $userId);
+            $stmt->execute();
+            $summary['total'] = (float)($stmt->get_result()->fetch_assoc()['total'] ?? 0.0);
+            
+            // This Year
+            $stmt = $db->prepare("SELECT SUM(amount) as total FROM finance_records WHERE member_id = ? AND transaction_type = 'income' AND YEAR(transaction_date) = YEAR(CURRENT_DATE)");
+            $stmt->bind_param("i", $userId);
+            $stmt->execute();
+            $summary['this_year'] = (float)($stmt->get_result()->fetch_assoc()['total'] ?? 0.0);
+            
+            // Last Transaction
+            $stmt = $db->prepare("SELECT * FROM finance_records WHERE member_id = ? AND transaction_type = 'income' ORDER BY transaction_date DESC LIMIT 1");
+            $stmt->bind_param("i", $userId);
+            $stmt->execute();
+            $summary['last_transaction'] = $stmt->get_result()->fetch_assoc();
+            
+        } catch (\Exception $e) {
+            error_log('Error getting user giving summary: ' . $e->getMessage());
+        }
+        return $summary;
+    }
+
+    /**
+     * Get attendance summary for the current user
+     */
+    public function getPersonalAttendanceSummary($userId, $limit = 5) {
+        try {
+            $sql = "SELECT a.*, u.name as unit_name
+                    FROM attendance a
+                    LEFT JOIN units u ON a.unit_id = u.id
+                    WHERE a.user_id = ?
+                    ORDER BY a.event_date DESC
+                    LIMIT ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param("ii", $userId, $limit);
+            $stmt->execute();
+            return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        } catch (\Exception $e) {
+            error_log('Error getting user attendance summary: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Get branch unit assignments where user is the unit head
+     */
+    public function getUnitHeadAssignments($userId) {
+        try {
+            $sql = "SELECT cu.church_id, c.name as church_name, cu.unit_id, u.name as unit_name
+                    FROM church_units cu
+                    JOIN churches c ON cu.church_id = c.id
+                    JOIN units u ON cu.unit_id = u.id
+                    WHERE cu.unit_head_user_id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param("i", $userId);
+            $stmt->execute();
+            return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        } catch (\Exception $e) {
+            error_log('Error getting unit head assignments: ' . $e->getMessage());
+            return [];
+        }
+    }
 }
+
 

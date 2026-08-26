@@ -78,5 +78,25 @@ class Project extends BaseModel {
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
+
+    /**
+     * Get project counts per unit for a specific church
+     */
+    public function getProjectCountsByUnit(int $churchId) {
+        $sql = "SELECT 
+                    u.id as unit_id,
+                    u.name as unit_name,
+                    COUNT(pu.project_id) as project_count
+                FROM units u
+                JOIN church_units cu ON u.id = cu.unit_id AND cu.church_id = ?
+                LEFT JOIN project_units pu ON u.id = pu.unit_id
+                GROUP BY u.id, u.name
+                ORDER BY unit_name ASC";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("i", $churchId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
 }
 

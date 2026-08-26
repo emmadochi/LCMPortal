@@ -26,7 +26,7 @@ $csrfToken = Security::generateCSRFToken();
                             <span class="badge bg-secondary fs-6">Inactive</span>
                         <?php endif; ?>
                     </div>
-                    <?php if ($userRole === 'admin'): ?>
+                    <?php if ($canManage ?? false): ?>
                         <div class="mt-4">
                             <a href="<?= AssetHelper::url('units/' . $unit['id'] . '/edit') ?>" class="btn btn-primary btn-sm">
                                 <i data-feather="edit" class="me-1"></i> Edit Unit
@@ -76,7 +76,7 @@ $csrfToken = Security::generateCSRFToken();
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0"><i data-feather="user-check" class="me-1"></i> Directors</h5>
-                        <?php if ($userRole === 'admin' || $userRole === 'director'): ?>
+                        <?php if ($canManage ?? false): ?>
                             <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#assignDirectorModal">
                                 <i data-feather="plus" class="icon-sm"></i> Assign
                             </button>
@@ -108,7 +108,7 @@ $csrfToken = Security::generateCSRFToken();
                                                 <td>
                                                     <small class="text-muted"><?= date('M d, Y', strtotime($director['assigned_at'])) ?></small>
                                                 </td>
-                                                <?php if ($userRole === 'admin'): ?>
+                                                <?php if ($canManage ?? false): ?>
                                                 <td>
                                                     <button class="btn btn-sm btn-outline-danger remove-director" 
                                                             data-user-id="<?= $director['id'] ?>"
@@ -131,7 +131,7 @@ $csrfToken = Security::generateCSRFToken();
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0"><i data-feather="users" class="me-1"></i> Members</h5>
-                        <?php if ($userRole === 'admin' || $userRole === 'director'): ?>
+                        <?php if ($canManage ?? false): ?>
                             <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#assignMemberModal">
                                 <i data-feather="plus" class="icon-sm"></i> Assign
                             </button>

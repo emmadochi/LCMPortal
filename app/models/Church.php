@@ -16,7 +16,7 @@ class Church extends BaseModel {
         $sql = "SELECT c.*, u.first_name as creator_first_name, u.last_name as creator_last_name,
                        CONCAT(pastor.first_name, ' ', pastor.last_name) as pastor_name,
                        (SELECT COUNT(*) FROM church_units cu WHERE cu.church_id = c.id) as unit_count,
-                       (SELECT COUNT(DISTINCT uu.user_id) FROM unit_user uu INNER JOIN church_units cu ON cu.unit_id = uu.unit_id AND cu.church_id = c.id) as member_count
+                       (SELECT COUNT(*) FROM users u WHERE u.church_id = c.id) as member_count
                 FROM churches c
                 LEFT JOIN users u ON c.created_by = u.id
                 LEFT JOIN users pastor ON c.pastor_user_id = pastor.id";
@@ -73,11 +73,14 @@ class Church extends BaseModel {
      * Get units associated with a church
      */
     public function getChurchUnits($churchId) {
-        $sql = "SELECT cu.*, u.name as unit_name, u.description as unit_description,
-                       usr.first_name as assigner_first_name, usr.last_name as assigner_last_name
+        $sql = "SELECT cu.*, u.id as id, u.id as unit_id, u.name as name, u.name as unit_name, u.description as unit_description,
+                       usr.first_name as assigner_first_name, usr.last_name as assigner_last_name,
+                       uh.first_name as head_first_name, uh.last_name as head_last_name,
+                       CONCAT(uh.first_name, ' ', uh.last_name) as unit_head_name
                 FROM church_units cu
                 JOIN units u ON cu.unit_id = u.id
                 LEFT JOIN users usr ON cu.assigned_by = usr.id
+                LEFT JOIN users uh ON cu.unit_head_user_id = uh.id
                 WHERE cu.church_id = ?
                 ORDER BY cu.is_primary DESC, u.name ASC";
         
@@ -85,6 +88,26 @@ class Church extends BaseModel {
         $stmt->bind_param("i", $churchId);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Assign Unit Head for a church-unit pair
+     */
+    public function assignUnitHead($churchId, $unitId, $userId) {
+        $sql = "UPDATE church_units SET unit_head_user_id = ? WHERE church_id = ? AND unit_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("iii", $userId, $churchId, $unitId);
+        return $stmt->execute();
+    }
+
+    /**
+     * Remove Unit Head for a church-unit pair
+     */
+    public function removeUnitHead($churchId, $unitId) {
+        $sql = "UPDATE church_units SET unit_head_user_id = NULL WHERE church_id = ? AND unit_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("ii", $churchId, $unitId);
+        return $stmt->execute();
     }
 
     /**
@@ -99,16 +122,11 @@ class Church extends BaseModel {
         return array_column($rows, 'unit_id');
     }
 
-    /**
-     * Get active church member users (users in units belonging to this church/branch)
-     */
     public function getChurchMemberUsers($churchId) {
-        $unitIds = $this->getChurchUnitIds($churchId);
-        if (empty($unitIds)) {
-            return [];
-        }
-        $userModel = new \App\Models\User();
-        return $userModel->getActiveUsersByUnitIds($unitIds);
+        $stmt = $this->db->prepare("SELECT *, CONCAT(first_name, ' ', last_name) as full_name FROM users WHERE church_id = ? AND status = 'active' ORDER BY last_name ASC, first_name ASC");
+        $stmt->bind_param("i", $churchId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
     /**
@@ -151,10 +169,11 @@ class Church extends BaseModel {
         $placeholders = implode(',', array_fill(0, count($unitIds), '?'));
         $sql = "SELECT DISTINCT ud.user_id FROM unit_directors ud 
                 INNER JOIN users u ON ud.user_id = u.id 
-                WHERE ud.unit_id IN ({$placeholders}) AND u.status = 'active'";
+                WHERE ud.unit_id IN ({$placeholders}) AND u.status = 'active' AND u.church_id = ?";
         $stmt = $this->db->prepare($sql);
-        $types = str_repeat('i', count($unitIds));
-        $stmt->bind_param($types, ...$unitIds);
+        $types = str_repeat('i', count($unitIds)) . 'i';
+        $params = array_merge($unitIds, [$churchId]);
+        $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         return array_values(array_unique(array_map('intval', array_column($rows, 'user_id'))));
@@ -211,15 +230,9 @@ class Church extends BaseModel {
             'leaders_count' => 0,
             'unit_coordinators_count' => 0,
         ];
-        if (empty($unitIds)) {
-            return $stats;
-        }
-        $placeholders = implode(',', array_fill(0, count($unitIds), '?'));
-        $types = str_repeat('i', count($unitIds));
 
-        // Total distinct members (any user in church units)
-        $sql = "SELECT COUNT(DISTINCT uu.user_id) AS total FROM unit_user uu 
-                INNER JOIN church_units cu ON uu.unit_id = cu.unit_id AND cu.church_id = ?";
+        // Total distinct members (where users.church_id = ? and role != 'admin')
+        $sql = "SELECT COUNT(*) AS total FROM users WHERE church_id = ? AND role != 'admin'";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('i', $churchId);
         $stmt->execute();
@@ -227,6 +240,9 @@ class Church extends BaseModel {
         $stats['total_members'] = (int)($row['total'] ?? 0);
 
         // Engagement bands: present attendances in church units, last 90 days
+        $placeholders = empty($unitIds) ? 'NULL' : implode(',', array_fill(0, count($unitIds), '?'));
+        $types = empty($unitIds) ? '' : str_repeat('i', count($unitIds));
+
         $sql = "SELECT 
                     CASE 
                         WHEN COALESCE(att.present_count, 0) = 0 THEN 'inactive'
@@ -234,20 +250,21 @@ class Church extends BaseModel {
                         ELSE 'active'
                     END AS band,
                     COUNT(*) AS cnt
-                FROM (
-                    SELECT DISTINCT uu.user_id FROM unit_user uu 
-                    INNER JOIN church_units cu ON uu.unit_id = cu.unit_id AND cu.church_id = ?
-                ) m
+                FROM users u
                 LEFT JOIN (
                     SELECT user_id, COUNT(*) AS present_count FROM attendance 
                     WHERE unit_id IN ({$placeholders}) AND status = 'present' 
                     AND event_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
                     GROUP BY user_id
-                ) att ON m.user_id = att.user_id
+                ) att ON u.id = att.user_id
+                WHERE u.church_id = ? AND u.role != 'admin'
                 GROUP BY band";
-        $params = array_merge([$churchId], $unitIds);
+        
+        $params = empty($unitIds) ? [] : $unitIds;
+        $params[] = $churchId;
+        
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param('i' . $types, ...$params);
+        $stmt->bind_param($types . 'i', ...$params);
         $stmt->execute();
         $result = $stmt->get_result();
         while ($row = $result->fetch_assoc()) {
@@ -262,9 +279,9 @@ class Church extends BaseModel {
 
         // Leaders: system role director/pastor/officer OR unit_user role officer/secretary/treasurer in this church's units
         $sql = "SELECT COUNT(DISTINCT u.id) AS cnt FROM users u
-                INNER JOIN unit_user uu ON u.id = uu.user_id
-                INNER JOIN church_units cu ON uu.unit_id = cu.unit_id AND cu.church_id = ?
-                WHERE u.status = 'active' AND (u.role IN ('director','pastor','officer') OR uu.role IN ('officer','secretary','treasurer'))";
+                LEFT JOIN unit_user uu ON u.id = uu.user_id
+                WHERE u.church_id = ? AND u.status = 'active' AND u.role != 'admin'
+                AND (u.role IN ('director','pastor','officer') OR uu.role IN ('officer','secretary','treasurer'))";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('i', $churchId);
         $stmt->execute();
@@ -290,31 +307,26 @@ class Church extends BaseModel {
      */
     public function getMembersForDashboard($churchId, array $filters = [], $page = 1, $perPage = 20) {
         $unitIds = $this->getChurchUnitIds($churchId);
-        if (empty($unitIds)) {
-            return ['data' => [], 'total' => 0, 'current_page' => $page, 'per_page' => $perPage, 'total_pages' => 0];
-        }
-        $placeholders = implode(',', array_fill(0, count($unitIds), '?'));
-        $types = str_repeat('i', count($unitIds));
-        $params = [$churchId];
-        $paramTypes = 'i';
-
-        $baseFrom = " FROM (
-            SELECT DISTINCT uu.user_id FROM unit_user uu 
-            INNER JOIN church_units cu ON uu.unit_id = cu.unit_id AND cu.church_id = ?
-        ) m
-        INNER JOIN users u ON u.id = m.user_id
+        $placeholders = empty($unitIds) ? 'NULL' : implode(',', array_fill(0, count($unitIds), '?'));
+        $types = empty($unitIds) ? '' : str_repeat('i', count($unitIds));
+        
+        $baseFrom = " FROM users u
         LEFT JOIN (
             SELECT user_id, COUNT(*) AS present_count FROM attendance 
             WHERE unit_id IN ({$placeholders}) AND status = 'present' 
             AND event_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
             GROUP BY user_id
-        ) att ON m.user_id = att.user_id";
-        $params = array_merge($params, $unitIds);
-        $paramTypes .= $types;
+        ) att ON u.id = att.user_id";
 
-        $where = ["1=1"];
+        $params = empty($unitIds) ? [] : $unitIds;
+        $paramTypes = $types;
+
+        $where = ["u.church_id = ?", "u.role != 'admin'"];
+        $params[] = $churchId;
+        $paramTypes .= 'i';
+
         if (!empty($filters['unit_id'])) {
-            $where[] = "m.user_id IN (SELECT user_id FROM unit_user WHERE unit_id = ?)";
+            $where[] = "u.id IN (SELECT user_id FROM unit_user WHERE unit_id = ?)";
             $params[] = (int)$filters['unit_id'];
             $paramTypes .= 'i';
         }
@@ -348,7 +360,7 @@ class Church extends BaseModel {
         $whereClause = implode(' AND ', $where);
 
         // Count total
-        $sqlCount = "SELECT COUNT(DISTINCT m.user_id) AS total " . $baseFrom . " WHERE " . $whereClause;
+        $sqlCount = "SELECT COUNT(DISTINCT u.id) AS total " . $baseFrom . " WHERE " . $whereClause;
         $stmt = $this->db->prepare($sqlCount);
         $stmt->bind_param($paramTypes, ...$params);
         $stmt->execute();
@@ -370,7 +382,7 @@ class Church extends BaseModel {
         $data = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
         // Enrich with unit names and unit roles for display (batch per page)
-        if (!empty($data)) {
+        if (!empty($data) && !empty($unitIds)) {
             $userIds = array_column($data, 'id');
             $userIdsPlaceholders = implode(',', array_fill(0, count($userIds), '?'));
             $unitIdsPlaceholders2 = implode(',', array_fill(0, count($unitIds), '?'));
@@ -389,6 +401,11 @@ class Church extends BaseModel {
             }
             foreach ($data as &$row) {
                 $row['units_display'] = isset($byUser[$row['id']]) ? implode(', ', $byUser[$row['id']]) : '';
+            }
+            unset($row);
+        } else {
+            foreach ($data as &$row) {
+                $row['units_display'] = '';
             }
             unset($row);
         }

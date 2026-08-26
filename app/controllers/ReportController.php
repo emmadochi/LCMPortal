@@ -40,6 +40,10 @@ class ReportController extends BaseController {
         $churchFilter = null;
         $reports = [];
 
+        if ($churchId) {
+            $this->checkChurchAccess($churchId);
+        }
+
         if ($churchId && $this->session->get('user_role') === 'admin') {
             $church = $this->churchModel->find($churchId);
             if ($church) {
@@ -99,6 +103,12 @@ class ReportController extends BaseController {
         if (!$report) {
             $this->session->setFlash('error', 'Report not found.');
             $this->redirect('/reports');
+        }
+
+        // Check if user can access this report's church
+        $unit = $this->unitModel->find($report['unit_id']);
+        if ($unit) {
+            $this->checkChurchAccess($unit['church_id']);
         }
         
         // Get report files
@@ -316,6 +326,35 @@ class ReportController extends BaseController {
                 ExportHelper::exportCSV($data, $headers, $filename);
                 break;
         }
+    }
+
+    /**
+     * Check if current user can access a specific church's reports
+     * Admins can access all churches
+     * Head pastors can only access their assigned church
+     */
+    private function checkChurchAccess($churchId) {
+        if (!$churchId) return true;
+        
+        $userRole = $this->session->get('user_role');
+        
+        // Admins can access any church
+        if ($userRole === 'admin') {
+            return true;
+        }
+        
+        // Head pastors can only access their assigned church
+        if ($this->session->isHeadPastor()) {
+            $headPastorChurchId = $this->session->getHeadPastorChurchId();
+            if ($headPastorChurchId == $churchId) {
+                return true;
+            }
+        }
+        
+        // If we get here, user doesn't have access
+        $this->session->setFlash('error', 'You do not have permission to access these reports.');
+        $this->redirect('/unauthorized');
+        return false;
     }
 }
 

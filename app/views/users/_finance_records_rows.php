@@ -19,7 +19,7 @@ if (empty($records)):
     </td>
     <td>
         <strong class="<?= $record['transaction_type'] === 'income' ? 'text-success' : 'text-danger' ?>">
-            <?= $record['transaction_type'] === 'income' ? '+' : '-' ?>$<?= number_format((float) $record['amount'], 2) ?>
+            <?= $record['transaction_type'] === 'income' ? '+' : '-' ?>₦<?= number_format((float) $record['amount'], 2) ?>
         </strong>
     </td>
     <td><span class="badge bg-info"><?= ucfirst(htmlspecialchars($record['category'] ?? 'other')) ?></span></td>

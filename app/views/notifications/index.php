@@ -2,182 +2,242 @@
 use App\Utilities\AssetHelper;
 ?>
 
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <div>
-                    <h4 class="card-title mb-0">Notifications</h4>
-                    <p class="card-title-desc mb-0">View and manage your notifications</p>
+<div class="container-fluid p-0">
+    <div class="p-4">
+        <!-- Header -->
+        <div class="card shadow-sm mb-4 border-0 overflow-hidden">
+            <div class="card-body bg-dark text-white py-4 position-relative">
+                <div class="position-absolute bottom-0 end-0 opacity-25 p-3">
+                    <i class="bx bxs-bell-ring display-1 text-white"></i>
                 </div>
-                <div>
-                    <?php if ($unreadCount > 0): ?>
-                        <button type="button" class="btn btn-sm btn-primary" id="markAllReadBtn">
-                            <i data-feather="check" class="me-1"></i> Mark All as Read
-                        </button>
+                <div class="d-flex align-items-center justify-content-between position-relative">
+                    <div>
+                        <h4 class="mb-0 fw-bold"><i class="bx bx-broadcast me-2"></i> <?= htmlspecialchars($churchName) ?></h4>
+                        <p class="mb-0 opacity-75">Notification & Broadcast Center</p>
+                    </div>
+                    <?php if ($canSend): ?>
+                    <div class="text-end">
+                        <a href="<?= AssetHelper::url('notifications/' . $churchId . '/create') ?>" class="btn btn-primary btn-lg shadow-sm">
+                            <i class="bx bx-plus-circle me-1"></i> Send New Notification
+                        </a>
+                    </div>
                     <?php endif; ?>
                 </div>
             </div>
-            <div class="card-body">
-                <?php if (empty($notifications)): ?>
-                    <div class="text-center py-5">
-                        <i data-feather="bell-off" class="icon-lg text-muted mb-3"></i>
-                        <p class="text-muted">No notifications found.</p>
-                    </div>
-                <?php else: ?>
-                    <div class="list-group">
-                        <?php foreach ($notifications as $notification): ?>
-                            <div class="list-group-item <?= !$notification['is_read'] ? 'list-group-item-action' : '' ?> <?= !$notification['is_read'] ? 'bg-light' : '' ?>" 
-                                 data-notification-id="<?= $notification['id'] ?>">
-                                <div class="d-flex w-100 justify-content-between align-items-start">
-                                    <div class="flex-grow-1">
-                                        <div class="d-flex align-items-center mb-2">
-                                            <h6 class="mb-0 me-2">
-                                                <?php if (!$notification['is_read']): ?>
-                                                    <span class="badge bg-primary me-2">New</span>
-                                                <?php endif; ?>
-                                                <?= htmlspecialchars($notification['title']) ?>
-                                            </h6>
-                                            <span class="badge bg-<?= match($notification['type']) {
-                                                'success' => 'success',
-                                                'warning' => 'warning',
-                                                'error' => 'danger',
-                                                default => 'info'
-                                            } ?>">
-                                                <?= ucfirst($notification['type']) ?>
-                                            </span>
-                                        </div>
-                                        <p class="mb-1"><?= htmlspecialchars($notification['message']) ?></p>
-                                        <?php if (!empty($notification['image_path'])): ?>
-                                            <div class="mt-2">
-                                                <img src="<?= htmlspecialchars(AssetHelper::baseUrl($notification['image_path'])) ?>" alt="" class="rounded img-fluid" style="max-height: 180px; object-fit: contain;">
-                                            </div>
-                                        <?php endif; ?>
-                                        <small class="text-muted d-block mt-2">
-                                            <?= date('M d, Y H:i', strtotime($notification['created_at'])) ?>
-                                        </small>
-                                    </div>
-                                    <div class="ms-3">
-                                        <?php if ($notification['link']): ?>
-                                            <a href="<?= htmlspecialchars($notification['link']) ?>" class="btn btn-sm btn-outline-primary notification-view-link" data-id="<?= (int)$notification['id'] ?>" data-read="<?= $notification['is_read'] ? '1' : '0' ?>">
-                                                View
-                                            </a>
-                                        <?php endif; ?>
-                                        <?php if (!$notification['is_read']): ?>
-                                            <button type="button" class="btn btn-sm btn-outline-secondary mark-read-btn" data-id="<?= $notification['id'] ?>">
-                                                Mark Read
-                                            </button>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
+        </div>
+
+        <!-- Summary Statistics -->
+        <div class="row g-4 mb-4">
+            <div class="col-xl-3 col-md-6">
+                <div class="card h-100 border-0 shadow-sm overflow-hidden glass-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0 me-3 bg-soft-primary p-3 rounded-circle text-primary">
+                                <i class="bx bx-paper-plane fs-3"></i>
                             </div>
-                        <?php endforeach; ?>
+                            <div class="flex-grow-1">
+                                <h6 class="text-muted text-uppercase fs-12 mb-1 fw-bold">Total Broadcasts</h6>
+                                <h4 class="mb-0 fw-bold"><?= number_format($stats['total_sent']) ?></h4>
+                            </div>
+                        </div>
                     </div>
-                <?php endif; ?>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card h-100 border-0 shadow-sm overflow-hidden glass-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0 me-3 bg-soft-success p-3 rounded-circle text-success">
+                                <i class="bx bx-group fs-3"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="text-muted text-uppercase fs-12 mb-1 fw-bold">Total Recipients</h6>
+                                <h4 class="mb-0 fw-bold"><?= number_format($stats['recipients']) ?></h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card h-100 border-0 shadow-sm overflow-hidden glass-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0 me-3 bg-soft-info p-3 rounded-circle text-info">
+                                <i class="bx bx-mobile-alt fs-3"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="text-muted text-uppercase fs-12 mb-1 fw-bold">In-App Messages</h6>
+                                <h4 class="mb-0 fw-bold"><?= number_format($stats['in_app']) ?></h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card h-100 border-0 shadow-sm overflow-hidden glass-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0 me-3 bg-soft-warning p-3 rounded-circle text-warning">
+                                <i class="bx bx-envelope fs-3"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="text-muted text-uppercase fs-12 mb-1 fw-bold">Email Notifications</h6>
+                                <h4 class="mb-0 fw-bold"><?= number_format($stats['email']) ?></h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Broadcast History -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 border-0 d-flex align-items-center justify-content-between">
+                <h5 class="mb-0 fw-bold text-dark"><i class="bx bx-history me-2 text-primary"></i> Broadcast History</h5>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-outline-secondary"><i class="bx bx-filter me-1"></i> Filter</button>
+                    <a href="<?= AssetHelper::url('notifications/' . $churchId . '/export') ?>" class="btn btn-sm btn-outline-primary"><i class="bx bx-download me-1"></i> Export Log</a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 datatable">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4" style="width: 15%">Date & Time</th>
+                                <th style="width: 25%">Title</th>
+                                <th style="width: 15%">Audience</th>
+                                <th style="width: 15%">Channels</th>
+                                <th style="width: 10%">Recipients</th>
+                                <th class="text-end pe-4" style="width: 20%">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($broadcasts)): ?>
+                            <tr>
+                                <td colspan="6" class="text-center py-5">
+                                    <div class="opacity-50">
+                                        <i class="bx bx-bell-off display-3 mb-3"></i>
+                                        <p class="fs-16">No broadcasts sent yet for this church.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php else: ?>
+                                <?php foreach ($broadcasts as $b): ?>
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="fw-semibold"><?= date('M d, Y', strtotime($b['created_at'])) ?></div>
+                                        <small class="text-muted"><?= date('H:i', strtotime($b['created_at'])) ?></small>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold truncate-text"><?= htmlspecialchars($b['title']) ?></div>
+                                        <small class="text-muted truncate-text"><?= htmlspecialchars(substr($b['message'], 0, 50)) ?>...</small>
+                                    </td>
+                                    <td>
+                                        <?php 
+                                        $badgeClass = match($b['audience_type']) {
+                                            'all' => 'bg-soft-primary text-primary',
+                                            'roles' => 'bg-soft-info text-info',
+                                            'church_members' => 'bg-soft-success text-success',
+                                            default => 'bg-soft-secondary text-secondary'
+                                        };
+                                        ?>
+                                        <span class="badge rounded-pill <?= $badgeClass ?>">
+                                            <?= ucfirst(str_replace('_', ' ', $b['audience_type'])) ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <?php if ($b['channels'] === 'in_app' || $b['channels'] === 'both'): ?>
+                                                <i class="bx bx-mobile-alt text-info" data-bs-toggle="tooltip" title="In-App"></i>
+                                            <?php endif; ?>
+                                            <?php if ($b['channels'] === 'email' || $b['channels'] === 'both'): ?>
+                                                <i class="bx bx-envelope text-warning" data-bs-toggle="tooltip" title="Email"></i>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="fw-bold"><?= number_format($b['recipient_count']) ?></span>
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <div class="d-flex justify-content-end gap-2">
+                                            <a href="<?= AssetHelper::url('notifications/' . $churchId . '/' . $b['id']) ?>" class="btn btn-sm btn-light rounded-pill px-3 shadow-none">
+                                                <i class="bx bx-show me-1"></i> Details
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-soft-danger rounded-circle p-1" onclick="confirmDelete(<?= $b['id'] ?>)">
+                                                <i class="bx bx-trash p-1"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<?php
-$pageJs = <<<JS
+<style>
+    .bg-soft-primary { background-color: rgba(85, 110, 230, 0.1); }
+    .bg-soft-success { background-color: rgba(52, 195, 143, 0.1); }
+    .bg-soft-info { background-color: rgba(80, 165, 241, 0.1); }
+    .bg-soft-warning { background-color: rgba(241, 180, 76, 0.1); }
+    .bg-soft-danger { background-color: rgba(244, 106, 106, 0.1); }
+    
+    .glass-card {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    
+    .glass-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+    
+    .truncate-text {
+        max-width: 250px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .datatable thead th {
+        border-top: none;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+    }
+</style>
+
 <script>
-    $(document).ready(function() {
-        var baseUrl = '<?= AssetHelper::url('notifications') ?>';
-        var csrfToken = document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '';
-
-        function markAsRead(id, onSuccess) {
-            $.ajax({
-                url: baseUrl + '/' + id + '/read',
-                method: 'POST',
-                data: { _token: csrfToken },
-                success: function(response) {
-                    if (response.success && typeof onSuccess === 'function') {
-                        onSuccess();
-                    }
-                },
-                error: function(xhr) {
-                    var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Failed to mark as read.';
-                    alert(msg);
-                }
-            });
-        }
-
-        function updateUnreadCount() {
-            $.get(baseUrl + '?unread_only=1', function(data) {
-                if (data.success) {
-                    var count = data.unread_count || 0;
-                    var badge = document.querySelector('.notification-count');
-                    if (badge) {
-                        badge.textContent = count;
-                        badge.style.display = count > 0 ? 'inline-block' : 'none';
-                    }
-                }
-            });
-        }
-
-        function applyReadStyle(item) {
-            item.removeClass('bg-light list-group-item-action');
-            item.find('.badge.bg-primary').remove();
-            item.find('.mark-read-btn').remove();
-            updateUnreadCount();
-        }
-
-        // Click row (except Mark Read button) to mark as read
-        $(document).on('click', '.list-group-item[data-notification-id]', function(e) {
-            if ($(e.target).closest('.mark-read-btn').length) return;
-            var item = $(this);
-            if (!item.hasClass('bg-light')) return;
-            var id = item.data('notification-id');
-            markAsRead(id, function() { applyReadStyle(item); });
-        });
-
-        // View link: mark as read then navigate (stopPropagation to avoid row handler)
-        $(document).on('click', '.notification-view-link', function(e) {
-            var link = $(this);
-            if (link.data('read') === 1) return; // already read, let default happen
-            e.preventDefault();
-            e.stopPropagation();
-            var id = link.data('id');
-            var href = link.attr('href');
-            markAsRead(id, function() {
-                applyReadStyle(link.closest('.list-group-item'));
-                window.location.href = href;
-            });
-        });
-
-        // Mark Read button
-        $(document).on('click', '.mark-read-btn', function(e) {
-            e.stopPropagation();
-            var id = $(this).data('id');
-            var item = $(this).closest('.list-group-item');
-            markAsRead(id, function() { applyReadStyle(item); });
-        });
-        
-        // Mark all as read
-        $('#markAllReadBtn').on('click', function() {
-            var btn = $(this);
-            $.ajax({
-                url: baseUrl + '/read-all',
-                method: 'POST',
-                data: { _token: csrfToken },
-                success: function(response) {
-                    if (response.success) {
-                        $('.list-group-item').removeClass('bg-light list-group-item-action');
-                        $('.badge.bg-primary').remove();
-                        $('.mark-read-btn').remove();
-                        btn.remove();
-                        updateUnreadCount();
-                    }
-                },
-                error: function(xhr) {
-                    var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Failed to mark all as read.';
-                    alert(msg);
-                }
-            });
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
         });
     });
-</script>
-JS;
-?>
 
+    function confirmDelete(id) {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "This broadcast record will be removed from the history. Actual notifications sent cannot be unsent.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#f46a6a',
+            cancelButtonColor: '#74788d',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Submit delete form or ajax call
+                console.log('Deleting broadcast ' + id);
+            }
+        })
+    }
+</script>

@@ -263,9 +263,26 @@ $engagementBadgeClass = [
                                             <span class="badge bg-info-subtle text-info"><?= htmlspecialchars($systemRoles[$m['system_role'] ?? 'user'] ?? ucfirst($m['system_role'] ?? 'User')) ?></span>
                                         </td>
                                         <td>
-                                            <a href="<?= AssetHelper::url('users/' . (int)($m['id'] ?? 0)) ?>" class="btn btn-sm btn-soft-primary" title="View profile">
-                                                <i class="bx bx-user"></i>
-                                            </a>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <a href="<?= AssetHelper::url('members/' . (int)($m['id'] ?? 0)) ?>" 
+                                                   class="btn btn-sm btn-soft-primary d-inline-flex align-items-center" 
+                                                   style="padding: 0.35rem 0.6rem; font-size: 0.8rem; border-radius: 6px; font-weight: 600;"
+                                                   title="View Profile">
+                                                    <i class="bx bx-show me-1 font-size-14"></i> View
+                                                </a>
+                                                <a href="<?= AssetHelper::url('members/' . (int)($m['id'] ?? 0) . '/edit') ?>" 
+                                                   class="btn btn-sm btn-soft-info d-inline-flex align-items-center" 
+                                                   style="padding: 0.35rem 0.6rem; font-size: 0.8rem; border-radius: 6px; font-weight: 600;"
+                                                   title="Edit Member">
+                                                    <i class="bx bx-edit-alt me-1 font-size-14"></i> Edit
+                                                </a>
+                                                <a href="<?= AssetHelper::url('follow-ups/create?member_id=' . (int)($m['id'] ?? 0)) ?>" 
+                                                   class="btn btn-sm btn-soft-warning d-inline-flex align-items-center" 
+                                                   style="padding: 0.35rem 0.6rem; font-size: 0.8rem; border-radius: 6px; font-weight: 600;"
+                                                   title="Create Follow-up">
+                                                    <i class="bx bx-clipboard me-1 font-size-14"></i> Follow-up
+                                                </a>
+                                            </div>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>

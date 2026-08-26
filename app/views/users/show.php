@@ -25,7 +25,16 @@ $userRole = $session->get('user_role');
                     </div>
                     <div class="mt-3">
                         <h5 class="mb-1"><?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?></h5>
-                        <p class="text-muted"><?= htmlspecialchars($user['email']) ?></p>
+                        <p class="text-muted mb-2"><?= htmlspecialchars($user['email']) ?></p>
+                        <?php if (!empty($church)): ?>
+                            <p class="text-primary font-size-14 mb-3">
+                                <i data-feather="home" class="icon-sm me-1"></i><?= htmlspecialchars($church['name']) ?>
+                            </p>
+                        <?php else: ?>
+                            <p class="text-muted font-size-14 mb-3">
+                                <i data-feather="globe" class="icon-sm me-1"></i>All Branches (Global Admin)
+                            </p>
+                        <?php endif; ?>
                     </div>
                     <div class="d-flex gap-2 justify-content-center mb-3">
                         <span class="badge bg-info fs-6"><?= ucfirst($user['role']) ?></span>
@@ -93,6 +102,20 @@ $userRole = $session->get('user_role');
                                 <tr>
                                     <th scope="row">Role :</th>
                                     <td><span class="badge bg-info"><?= ucfirst($user['role']) ?></span></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Church Branch :</th>
+                                    <td>
+                                        <?php if (!empty($church)): ?>
+                                            <span class="text-primary font-weight-semibold">
+                                                <i data-feather="home" class="icon-sm me-1"></i><?= htmlspecialchars($church['name']) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="text-muted">
+                                                <i data-feather="globe" class="icon-sm me-1"></i>All Branches (Global Admin)
+                                            </span>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
                                 <tr>
                                     <th scope="row">Status :</th>

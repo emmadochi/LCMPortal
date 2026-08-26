@@ -1,526 +1,648 @@
 <?php
+
 namespace App\Controllers;
 
 use App\Models\FinanceRecord;
-use App\Models\Unit;
-use App\Models\Church;
-use App\Models\User;
-use App\Models\ActivityLog;
-use App\Utilities\Security;
+use App\Utilities\Validator;
 use App\Utilities\ExportHelper;
 
-class FinanceController extends BaseController {
-    private $financeModel;
-    private $unitModel;
-    private $churchModel;
-    private $userModel;
-
-    public function __construct() {
-        parent::__construct();
-        $this->financeModel = new FinanceRecord();
-        $this->unitModel = new Unit();
-        $this->churchModel = new Church();
-        $this->userModel = new User();
-        
-        // Check permission
-        $this->authorize('manage_finance');
-    }
-
+/**
+ * Finance Controller
+ * 
+ * Handles all finance-related operations with Church ID-based routing.
+ * Extends BaseModuleController for consistent CRUD functionality.
+ * 
+ * @author Professional Development Team
+ * @version 1.0
+ */
+class FinanceController extends BaseModuleController
+{
     /**
-     * List finance records with optional church and period filter. Supports charts and month/range selector.
+     * Initialize finance module
      */
-    public function index() {
-        // Determine effective church scope based on role.
-        $userId = (int) $this->session->get('user_id');
-        $userRole = $this->session->get('user_role');
-        $requestedChurchId = (int) $this->request->get('church_id', 0);
-
-        $churchId = 0;
-        if ($userRole === 'head_pastor') {
-            // Head pastor is always scoped to their own church.
-            $pastorChurch = $this->churchModel->getChurchByHeadPastor($userId);
-            if ($pastorChurch) {
-                $churchId = (int) $pastorChurch['id'];
-            }
-        } elseif ($userRole === 'admin') {
-            // Admin can view global or a specific church via query param.
-            $churchId = $requestedChurchId;
-        } else {
-            // Other roles: respect explicit query param if provided.
-            $churchId = $requestedChurchId;
+    protected function initializeModule()
+    {
+        $this->moduleName = 'finance';
+        $this->viewPath = 'finance';
+        $this->model = new FinanceRecord();
+    }
+    
+    /**
+     * Validate finance input data
+     * 
+     * @param array $data
+     * @param int|null $id
+     * @return array
+     */
+    protected function validateInput($data, $id = null)
+    {
+        $validator = new Validator();
+        
+        $rules = [
+            'title' => 'required|max:255',
+            'amount' => 'required|numeric|min:0',
+            'type' => 'required|in:income,expense',
+            'date' => 'required|date',
+            'category' => 'required|max:100'
+        ];
+        
+        // Add description as optional
+        if (!empty($data['description'])) {
+            $rules['description'] = 'max:1000';
         }
-
-        // In the new model, every record belongs to a church (church_id), and unit_id is optional.
-        $churchFilter = null;
-        $records = [];
-        $summary = [];
-        $chartMonthly = [];
-        $chartIncomeByCategory = [];
-        $chartExpenseByCategory = [];
-        $churchSummaries = [];
-        $chartChurches = [];
-
+        
+        return $validator->validate($data, $rules);
+    }
+    
+    /**
+     * Get record title for breadcrumbs
+     * 
+     * @param array $record
+     * @return string
+     */
+    protected function getRecordTitle($record)
+    {
+        return $record['title'] ?? 'Financial Record #' . $record['id'];
+    }
+    
+    /**
+     * Display financial dashboard (supports both global and single-church views)
+     * 
+     * @param int|null $churchId Church ID for single-church view, null for global view
+     */
+    public function index($churchId = null)
+    {
+        $this->requirePermission($this->permissions['index']);
+        
+        // Determine view scope based on church_id parameter
         if ($churchId) {
-            $church = $this->churchModel->find($churchId);
-            if ($church) {
-                $churchFilter = ['id' => $churchId, 'name' => $church['name']];
-            }
-        }
-
-        $periodType = $this->request->get('period', 'range');
-        $startDate = null;
-        $endDate = null;
-        $period = $this->computePeriodDates($periodType);
-        $startDate = $period['start_date'];
-        $endDate = $period['end_date'];
-
-        if ($churchId && $churchFilter) {
-            // Church-scoped view: use church_id as primary filter; unit_id may be NULL (church-wide) or specific units.
-            $conditions = ['church_id' => $churchId];
-            $records = $this->financeModel->getFinanceWithDetails($conditions, 'transaction_date DESC', $startDate, $endDate);
-            $summary = $this->financeModel->getSummaryByChurch($churchId, $startDate, $endDate);
-            $chartMonthly = $this->financeModel->getMonthlyTotalsByChurch($churchId, $startDate, $endDate);
-            $chartIncomeByCategory = $this->financeModel->getCategoryBreakdownByChurch($churchId, $startDate, $endDate, 'income');
-            $chartExpenseByCategory = $this->financeModel->getCategoryBreakdownByChurch($churchId, $startDate, $endDate, 'expense');
+            $this->renderSingleChurchView($churchId);
         } else {
-            // Global view (all churches)
-            $records = $this->financeModel->getFinanceWithDetails([], 'transaction_date DESC', $startDate, $endDate);
-            $summary = $this->financeModel->getSummary(null, $startDate, $endDate);
-            $chartMonthly = $this->financeModel->getMonthlyTotals(null, $startDate, $endDate);
-            $chartIncomeByCategory = $this->financeModel->getCategoryBreakdown(null, $startDate, $endDate, 'income');
-            $chartExpenseByCategory = $this->financeModel->getCategoryBreakdown(null, $startDate, $endDate, 'expense');
-            // Per-church summaries for global admin table and comparison chart
-            $churchSummaries = $this->financeModel->getSummaryByChurches($startDate, $endDate);
-            foreach ($churchSummaries as $row) {
-                $income = (float)($row['total_income'] ?? 0);
-                $expense = (float)($row['total_expense'] ?? 0);
-                $net = $income - $expense;
-                $label = $row['church_name'] ?? 'Unknown';
-                $chartChurches[] = [
-                    'label' => $label,
-                    'income' => $income,
-                    'expense' => $expense,
-                    'net' => $net,
-                ];
-            }
+            $this->renderGlobalView();
         }
-
-        $this->render('finance/index', [
-            'title' => 'Finance',
-            'pageTitle' => $churchFilter ? 'Finance — ' . $churchFilter['name'] : 'Finance',
+    }
+    
+    /**
+     * Render global financial dashboard (all churches)
+     */
+    private function renderGlobalView()
+    {
+        $filters = $this->request->get();
+        
+        // Get filtered records from all churches
+        $records = $this->getFilteredRecords($filters, null);
+        
+        // Prepare dashboard data
+        $dashboardData = $this->prepareDashboardData($records);
+        
+        $csrfToken = \App\Utilities\Security::generateCSRFToken();
+        
+        $this->render($this->viewPath . '/dashboard_all', [
+            'title' => 'Financial Dashboard - All Churches',
             'records' => $records,
-            'summary' => $summary,
-            'chartMonthly' => $chartMonthly,
-            'chartIncomeByCategory' => $chartIncomeByCategory,
-            'chartExpenseByCategory' => $chartExpenseByCategory,
-            'period' => $period,
-            'churchFilter' => $churchFilter,
-            'churchSummaries' => $churchSummaries,
-            'chartChurches' => $chartChurches
+            'filters' => $filters,
+            'csrf_token' => $csrfToken,
+            'summary' => $dashboardData['summary'],
+            'chart_data' => $dashboardData['chart_data'],
+            'church_breakdown' => $dashboardData['church_breakdown'],
+            'breadcrumbs' => [
+                ['label' => 'Dashboard', 'url' => '/'],
+                ['label' => 'Finance', 'url' => '/finance'],
+                ['label' => 'All Churches']
+            ]
         ]);
     }
-
+    
     /**
-     * Compute start_date and end_date from request period params. Returns period array with form values for the view.
+     * Render single church financial dashboard
+     * 
+     * @param int $churchId
      */
-    private function computePeriodDates($periodType) {
-        $now = new \DateTime();
-        $period = [
-            'period_type' => $periodType,
-            'month' => (int) $this->request->get('month', $now->format('n')),
-            'year' => (int) $this->request->get('year', $now->format('Y')),
-            'from_month' => (int) $this->request->get('from_month', 1),
-            'from_year' => (int) $this->request->get('from_year', $now->format('Y')),
-            'to_month' => (int) $this->request->get('to_month', $now->format('n')),
-            'to_year' => (int) $this->request->get('to_year', $now->format('Y')),
-            'start_date' => null,
-            'end_date' => null,
-        ];
-
-        if ($periodType === 'month') {
-            $m = max(1, min(12, $period['month']));
-            $y = max(2000, min(2100, $period['year']));
-            $period['month'] = $m;
-            $period['year'] = $y;
-            $period['start_date'] = sprintf('%04d-%02d-01', $y, $m);
-            $period['end_date'] = date('Y-m-t', strtotime($period['start_date']));
-        } else {
-            $fm = max(1, min(12, $period['from_month']));
-            $fy = max(2000, min(2100, $period['from_year']));
-            $tm = max(1, min(12, $period['to_month']));
-            $ty = max(2000, min(2100, $period['to_year']));
-            $period['from_month'] = $fm;
-            $period['from_year'] = $fy;
-            $period['to_month'] = $tm;
-            $period['to_year'] = $ty;
-            $period['start_date'] = sprintf('%04d-%02d-01', $fy, $fm);
-            $endLast = date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $ty, $tm)));
-            $period['end_date'] = $endLast;
+    private function renderSingleChurchView($churchId)
+    {
+        $churchId = $this->getChurchId($churchId);
+        if (!$churchId) return;
+        
+        // Security: Validate user has access to this specific church
+        if (!$this->validateChurchAccess($churchId)) {
+            $this->session->setFlash('error', 'Access denied. You do not have permission to view this church.');
+            $this->redirect('/unauthorized');
+            return;
         }
-
-        return $period;
+        
+        $filters = $this->request->get();
+        
+        // Get filtered records for specific church
+        $records = $this->getFilteredRecords($filters, $churchId);
+        
+        // Prepare dashboard data
+        $dashboardData = $this->prepareDashboardData($records);
+        
+        // Get church name for display
+        $churchModel = new \App\Models\Church();
+        $church = $churchModel->find($churchId);
+        $churchName = $church['name'] ?? 'Church #' . $churchId;
+        
+        $csrfToken = \App\Utilities\Security::generateCSRFToken();
+        
+        $this->render($this->viewPath . '/dashboard_single', [
+            'title' => 'Financial Management - ' . $churchName,
+            'records' => $records,
+            'churchId' => $churchId,
+            'churchName' => $churchName,
+            'filters' => $filters,
+            'csrf_token' => $csrfToken,
+            'summary' => $dashboardData['summary'],
+            'chart_data' => $dashboardData['chart_data'],
+            'breadcrumbs' => $this->getBreadcrumbs('index', $churchId)
+        ]);
+    }
+    
+    /**
+     * Validate that the current user has access to the specified church
+     * Prevents Head Pastors from accessing other churches via URL manipulation
+     * 
+     * @param int $churchId
+     * @return bool
+     */
+    private function validateChurchAccess($churchId)
+    {
+        $userRole = $this->session->get('user_role');
+        
+        // Admins have access to all churches
+        if ($userRole === 'admin') {
+            return true;
+        }
+        
+        // Head Pastors can only access their assigned church
+        if ($this->session->isHeadPastor()) {
+            $headPastorChurchId = $this->session->getHeadPastorChurchId();
+            return $headPastorChurchId == $churchId;
+        }
+        
+        // For other users, check if they have a church_id in session
+        $sessionChurchId = $this->session->get('church_id');
+        if ($sessionChurchId) {
+            return $sessionChurchId == $churchId;
+        }
+        
+        // No valid access found
+        return false;
+    }
+    
+    /**
+     * Get filtered records based on request parameters
+     * 
+     * @param array $filters Request filters
+     * @param int|null $churchId Church ID to filter by (null for all churches)
+     * @return array Filtered records
+     */
+    private function getFilteredRecords($filters = [], $churchId = null)
+    {
+        $search = $filters['search'] ?? '';
+        $type = $filters['type'] ?? '';
+        $startDate = $filters['start_date'] ?? date('Y-m-01');
+        $endDate = $filters['end_date'] ?? date('Y-m-d');
+        
+        // Get records based on church scope
+        if ($churchId) {
+            $records = $this->model->findAll(['church_id' => $churchId]);
+            // Apply date filtering
+            $records = array_filter($records, function($record) use ($startDate, $endDate) {
+                return $record['transaction_date'] >= $startDate && $record['transaction_date'] <= $endDate;
+            });
+        } else {
+            $records = $this->model->getFinanceWithDetails([], null, $startDate, $endDate);
+            
+            // Add church names
+            $churchModel = new \App\Models\Church();
+            $churches = $churchModel->getChurches();
+            $churchMap = [];
+            foreach ($churches as $church) {
+                $churchMap[$church['id']] = $church['name'];
+            }
+            
+            foreach ($records as &$record) {
+                $record['church_name'] = $churchMap[$record['church_id']] ?? 'Unknown Church';
+            }
+        }
+        
+        // Apply search filter
+        if (!empty($search)) {
+            $search = strtolower($search);
+            $records = array_filter($records, function($record) use ($search) {
+                return strpos(strtolower($record['title'] ?? ''), $search) !== false ||
+                       strpos(strtolower($record['category'] ?? ''), $search) !== false ||
+                       strpos(strtolower($record['description'] ?? ''), $search) !== false;
+            });
+        }
+        
+        // Apply type filter
+        if (!empty($type)) {
+            $records = array_filter($records, function($record) use ($type) {
+                return $record['transaction_type'] === $type;
+            });
+        }
+        
+        return array_values($records); // Re-index array
+    }
+    
+    /**
+     * Prepare dashboard data (summary statistics and chart data)
+     * 
+     * @param array $records Financial records
+     * @return array Dashboard data including summary, chart_data, and church_breakdown
+     */
+    private function prepareDashboardData($records)
+    {
+        // Calculate summary
+        $totalIncome = 0;
+        $totalExpense = 0;
+        $churchBreakdown = [];
+        
+        foreach ($records as $record) {
+            $amount = (float)$record['amount'];
+            $churchId = $record['church_id'];
+            $churchName = $record['church_name'] ?? 'Church #' . $churchId;
+            
+            // Initialize church breakdown if needed
+            if (!isset($churchBreakdown[$churchId])) {
+                $churchBreakdown[$churchId] = [
+                    'name' => $churchName,
+                    'income' => 0,
+                    'expense' => 0
+                ];
+            }
+            
+            // Accumulate totals
+            if ($record['transaction_type'] === 'income') {
+                $totalIncome += $amount;
+                $churchBreakdown[$churchId]['income'] += $amount;
+            } else {
+                $totalExpense += $amount;
+                $churchBreakdown[$churchId]['expense'] += $amount;
+            }
+        }
+        
+        // Calculate balances
+        foreach ($churchBreakdown as &$church) {
+            $church['balance'] = $church['income'] - $church['expense'];
+        }
+        
+        // Prepare 6-month chart data
+        $chartData = $this->prepareChartData($records);
+        
+        return [
+            'summary' => [
+                'total_income' => $totalIncome,
+                'total_expense' => $totalExpense,
+                'net_balance' => $totalIncome - $totalExpense,
+                'record_count' => count($records)
+            ],
+            'chart_data' => $chartData,
+            'church_breakdown' => $churchBreakdown
+        ];
+    }
+    
+    /**
+     * Prepare monthly chart data for last 6 months
+     * 
+     * @param array $records Financial records
+     * @return array Chart data with labels, income, and expense arrays
+     */
+    private function prepareChartData($records)
+    {
+        $monthlyLabels = [];
+        $monthlyIncome = [];
+        $monthlyExpense = [];
+        
+        // Generate last 6 months
+        for ($i = 5; $i >= 0; $i--) {
+            $monthDate = date('Y-m', strtotime("-{$i} month"));
+            $monthLabel = date('M Y', strtotime("-{$i} month"));
+            $monthlyLabels[] = $monthLabel;
+            
+            $monthIncome = 0;
+            $monthExpense = 0;
+            
+            foreach ($records as $record) {
+                $recordMonth = date('Y-m', strtotime($record['transaction_date']));
+                if ($recordMonth === $monthDate) {
+                    if ($record['transaction_type'] === 'income') {
+                        $monthIncome += (float)$record['amount'];
+                    } else {
+                        $monthExpense += (float)$record['amount'];
+                    }
+                }
+            }
+            
+            $monthlyIncome[] = $monthIncome;
+            $monthlyExpense[] = $monthExpense;
+        }
+        
+        return [
+            'labels' => $monthlyLabels,
+            'income' => $monthlyIncome,
+            'expense' => $monthlyExpense
+        ];
+    }
+    
+    /**
+     * Override create to add financial categories
+     * 
+     * @param int|null $churchId
+     */
+    public function create($churchId = null)
+    {
+        $this->requirePermission($this->permissions['create']);
+        
+        $churchId = $this->getChurchId($churchId);
+        if (!$churchId) return;
+        
+        $csrfToken = \App\Utilities\Security::generateCSRFToken();
+        
+        $this->render($this->viewPath . '/create', [
+            'title' => 'Create Financial Record',
+            'churchId' => $churchId,
+            'csrf_token' => $csrfToken,
+            'breadcrumbs' => $this->getBreadcrumbs('create', $churchId)
+        ]);
+    }
+    
+    /**
+     * Override edit to add financial categories
+     * 
+     * @param int $id
+     * @param int|null $churchId
+     */
+    public function edit($id, $churchId = null)
+    {
+        $this->requirePermission($this->permissions['edit']);
+        
+        $churchId = $this->getChurchId($churchId);
+        if (!$churchId) return;
+        
+        $record = $this->model->find($id);
+        
+        if (!$record || $record['church_id'] != $churchId) {
+            $this->session->setFlash('error', 'Financial record not found.');
+            $this->redirect("/finance/{$churchId}");
+            return;
+        }
+        
+        $csrfToken = \App\Utilities\Security::generateCSRFToken();
+        
+        $this->render($this->viewPath . '/edit', [
+            'title' => 'Edit Financial Record',
+            'record' => $record,
+            'churchId' => $churchId,
+            'csrf_token' => $csrfToken,
+            'breadcrumbs' => $this->getBreadcrumbs('edit', $churchId, $record)
+        ]);
+    }
+    
+    /**
+     * Export financial records to CSV/Excel/PDF
+     * 
+     * @param string|null $format Export format (csv, excel, pdf)
+     * @param int|null $churchId Church ID to filter by (null for all churches)
+     */
+    public function export($format = null, $churchId = null)
+    {
+        $this->requirePermission($this->permissions['index']);
+        
+        // Validate format
+        $format = strtolower($format ?? 'csv');
+        if (!in_array($format, ['csv', 'excel', 'pdf'])) {
+            $format = 'csv';
+        }
+        
+        // Get filters from request
+        $filters = $this->request->get();
+        
+        // Validate church access if church_id specified
+        if ($churchId && !$this->validateChurchAccess($churchId)) {
+            $this->session->setFlash('error', 'Access denied. You do not have permission to view this church.');
+            $this->redirect('/unauthorized');
+            return;
+        }
+        
+        // Get filtered records
+        if ($churchId) {
+            $records = $this->getFilteredRecords($filters, $churchId);
+            $exportTitle = 'Financial Report - Single Church';
+        } else {
+            $records = $this->getFilteredRecords($filters, null);
+            $exportTitle = 'Financial Report - All Churches';
+        }
+        
+        // Prepare data for export
+        $exportData = [];
+        foreach ($records as $record) {
+            $exportData[] = [
+                'date' => $record['transaction_date'],
+                'church' => $record['church_name'] ?? 'N/A',
+                'title' => $record['title'],
+                'type' => ucfirst($record['transaction_type']),
+                'category' => $record['category'],
+                'amount' => '₦' . number_format((float)$record['amount'], 2),
+                'description' => $record['description'] ?? ''
+            ];
+        }
+        
+        // Define column headers
+        $headers = ['Date', 'Church', 'Title', 'Type', 'Category', 'Amount (₦)', 'Description'];
+        
+        // Generate filename with timestamp
+        $timestamp = date('Y-m-d_H-i-s');
+        $churchSuffix = $churchId ? "_church_{$churchId}" : '_all_churches';
+        $filename = "financial_report{$churchSuffix}_{$timestamp}";
+        
+        // Export based on format
+        switch ($format) {
+            case 'csv':
+                ExportHelper::exportCSV($exportData, $headers, $filename . '.csv');
+                break;
+                
+            case 'excel':
+                ExportHelper::exportExcel($exportData, $headers, $filename . '.xls');
+                break;
+                
+            case 'pdf':
+                // Add summary statistics for PDF
+                $summary = $this->prepareDashboardData($records)['summary'];
+                $extraHtml = $this->generatePdfSummary($summary, $filters, $churchId);
+                ExportHelper::exportPDF($exportData, $headers, $exportTitle, $filename . '.pdf', $extraHtml);
+                break;
+        }
+        
+        exit;
+    }
+    
+    /**
+     * Generate summary HTML for PDF export
+     * 
+     * @param array $summary Summary statistics
+     * @param array $filters Applied filters
+     * @param int|null $churchId Church ID
+     * @return string HTML summary
+     */
+    private function generatePdfSummary($summary, $filters, $churchId = null)
+    {
+        $html = '<div class="section-title">Summary Statistics</div>';
+        $html .= '<table class="summary-table">';
+        $html .= '<tr><th>Total Income</th><td>₦' . number_format($summary['total_income'], 2) . '</td></tr>';
+        $html .= '<tr><th>Total Expenses</th><td>₦' . number_format($summary['total_expense'], 2) . '</td></tr>';
+        $html .= '<tr><th>Net Balance</th><td>₦' . number_format($summary['net_balance'], 2) . '</td></tr>';
+        $html .= '<tr><th>Total Transactions</th><td>' . $summary['record_count'] . '</td></tr>';
+        $html .= '</table>';
+        
+        // Add filter information
+        if (!empty($filters['start_date']) || !empty($filters['end_date'])) {
+            $html .= '<div class="section-title">Date Range</div>';
+            $html .= '<p>From: ' . ($filters['start_date'] ?? 'Beginning') . ' To: ' . ($filters['end_date'] ?? 'Present') . '</p>';
+        }
+        
+        // Add church information
+        if ($churchId) {
+            $churchModel = new \App\Models\Church();
+            $church = $churchModel->find($churchId);
+            if ($church) {
+                $html .= '<div class="section-title">Church Information</div>';
+                $html .= '<p><strong>Name:</strong> ' . htmlspecialchars($church['name']) . '</p>';
+                $html .= '<p><strong>ID:</strong> ' . $churchId . '</p>';
+            }
+        }
+        
+        return $html;
     }
 
     /**
-     * Show create form
+     * Show personal giving history for the logged-in user
      */
-    public function create() {
-        // Resolve church context similarly to index(): head pastors are locked to their church.
-        $userId = (int) $this->session->get('user_id');
-        $userRole = $this->session->get('user_role');
-        $requestedChurchId = (int) $this->request->get('church_id', 0);
-
-        $churchId = 0;
-        if ($userRole === 'head_pastor') {
-            $pastorChurch = $this->churchModel->getChurchByHeadPastor($userId);
-            if ($pastorChurch) {
-                $churchId = (int) $pastorChurch['id'];
-            }
-        } elseif ($userRole === 'admin') {
-            $churchId = $requestedChurchId;
-        } else {
-            $churchId = $requestedChurchId;
-        }
-
-        $csrfToken = Security::generateCSRFToken();
-        $units = $this->unitModel->getActiveUnits();
-        $transactionTypes = ['income', 'expense'];
-        $categories = ['offering', 'tithe', 'donation', 'event', 'equipment', 'maintenance', 'salary', 'utility', 'other'];
-        $paymentMethods = ['cash', 'check', 'bank_transfer', 'mobile_money', 'card', 'other'];
-        // All active users can be potential givers; for now we reuse all users ordered by name.
-        $members = $this->userModel->getAllUsers();
+    public function myRecords() {
+        $userId = $this->session->get('user_id');
         
-        $this->render('finance/create', [
-            'title' => 'Create Finance Record',
-            'pageTitle' => 'Create Finance Record',
-            'csrf_token' => $csrfToken,
-            'units' => $units,
-            'transactionTypes' => $transactionTypes,
-            'categories' => $categories,
-            'paymentMethods' => $paymentMethods,
-            'churchId' => $churchId,
-            'members' => $members,
+        $records = $this->model->findAll([
+            'member_id' => $userId,
+            'transaction_type' => 'income'
+        ], 'transaction_date DESC');
+
+        $this->render('finance/my_records', [
+            'title' => 'My Giving History',
+            'pageTitle' => 'My Giving History',
+            'records' => $records,
             'breadcrumbs' => [
-                [
-                    'label' => 'Finance',
-                    'url' => $churchId ? '/finance?church_id=' . $churchId : '/finance'
-                ],
-                ['label' => 'Create', 'active' => true]
+                ['label' => 'Dashboard', 'url' => '/'],
+                ['label' => 'Giving History', 'active' => true]
             ]
         ]);
     }
 
     /**
-     * Store new finance record
+     * Export personal giving records to CSV or PDF
      */
-    public function store() {
-        // Resolve church context from role + request. Head pastors are always scoped to their own church.
-        $userId = (int) $this->session->get('user_id');
-        $userRole = $this->session->get('user_role');
-        $postedChurchId = (int) $this->request->post('church_id', 0);
-
-        $churchId = 0;
-        if ($userRole === 'head_pastor') {
-            $pastorChurch = $this->churchModel->getChurchByHeadPastor($userId);
-            if ($pastorChurch) {
-                $churchId = (int) $pastorChurch['id'];
-            }
-        } elseif ($userRole === 'admin') {
-            $churchId = $postedChurchId;
-        } else {
-            $churchId = $postedChurchId;
+    public function exportMyRecords($format = 'csv') {
+        $userId = $this->session->get('user_id');
+        $format = strtolower($format);
+        if (!in_array($format, ['csv', 'pdf'])) {
+            $format = 'csv';
         }
 
-        $redirectQuery = $churchId ? '?church_id=' . $churchId : '';
+        $records = $this->model->findAll([
+            'member_id' => $userId,
+            'transaction_type' => 'income'
+        ], 'transaction_date DESC');
 
-        $token = $this->request->post('_token');
-        if (!$token || !Security::validateCSRFToken($token)) {
-            $this->session->setFlash('error', 'Invalid security token.');
-            $this->redirect('/finance/create' . $redirectQuery);
-        }
-
-        $validation = $this->validate([
-            // unit_id is now optional; when present must be numeric
-            'unit_id' => 'numeric',
-            'member_id' => 'numeric',
-            'transaction_type' => 'required',
-            'amount' => 'required|numeric|min:0.01',
-            'category' => 'required',
-            'transaction_date' => 'required|date'
-        ]);
-
-        if (!$validation['valid']) {
-            $this->session->setFlash('errors', $validation['errors']);
-            $this->redirect('/finance/create' . $redirectQuery);
-        }
-
-        $unitId = (int) $this->request->post('unit_id', 0);
-        if ($unitId <= 0) {
-            $unitId = null;
-        }
-
-        $memberId = (int) $this->request->post('member_id', 0);
-        if ($memberId <= 0) {
-            $memberId = null;
-        }
-
-        $currentUserId = (int) $this->session->get('user_id');
-
-        $data = [
-            'church_id' => $churchId ?: null,
-            'unit_id' => $unitId,
-            'member_id' => $memberId,
-            // Store both user_id (if column exists) and recorded_by for compatibility with existing queries
-            'user_id' => $currentUserId,
-            'recorded_by' => $currentUserId,
-            'transaction_type' => $this->request->post('transaction_type'),
-            'amount' => (float)$this->request->post('amount'),
-            'category' => $this->request->post('category'),
-            'description' => $this->request->post('description', ''),
-            'transaction_date' => $this->request->post('transaction_date'),
-            'payment_method' => $this->request->post('payment_method', 'cash'),
-            'reference_number' => $this->request->post('reference_number', '')
-        ];
-
-        $id = $this->financeModel->create($data);
-        
-        if ($id) {
-            // Log activity
-            ActivityLog::log(
-                $this->session->get('user_id'),
-                'create',
-                'FinanceRecord',
-                $id,
-                "Created {$data['transaction_type']} record: {$data['amount']} ({$data['category']})"
-            );
-            
-            $this->session->setFlash('success', 'Finance record created successfully.');
-            $this->redirect('/finance' . $redirectQuery);
-        } else {
-            $this->session->setFlash('error', 'Failed to create finance record.');
-            $this->redirect('/finance/create' . $redirectQuery);
-        }
-    }
-
-    /**
-     * Show single finance record
-     */
-    public function show($id) {
-        $record = $this->financeModel->find($id);
-        
-        if (!$record) {
-            $this->session->setFlash('error', 'Finance record not found.');
-            $this->redirect('/finance');
-        }
-        
-        $this->render('finance/show', [
-            'title' => 'Finance Record',
-            'pageTitle' => 'Finance Record',
-            'record' => $record
-        ]);
-    }
-
-    /**
-     * Export finance records for the current period and scope.
-     * Supports: csv, excel, json, pdf
-     */
-    public function export() {
-        // Reuse period + church scoping logic from index()
-        $userId = (int) $this->session->get('user_id');
-        $userRole = $this->session->get('user_role');
-        $requestedChurchId = (int) $this->request->get('church_id', 0);
-
-        $churchId = 0;
-        if ($userRole === 'head_pastor') {
-            $pastorChurch = $this->churchModel->getChurchByHeadPastor($userId);
-            if ($pastorChurch) {
-                $churchId = (int) $pastorChurch['id'];
-            }
-        } elseif ($userRole === 'admin') {
-            $churchId = $requestedChurchId;
-        } else {
-            $churchId = $requestedChurchId;
-        }
-
-        $periodType = $this->request->get('period', 'range');
-        $period = $this->computePeriodDates($periodType);
-        $startDate = $period['start_date'];
-        $endDate = $period['end_date'];
-
-        // Fetch detailed records (not just summaries)
-        if ($churchId) {
-            $conditions = ['church_id' => $churchId];
-            $records = $this->financeModel->getFinanceWithDetails($conditions, 'transaction_date DESC', $startDate, $endDate);
-        } else {
-            $records = $this->financeModel->getFinanceWithDetails([], 'transaction_date DESC', $startDate, $endDate);
-        }
-
-        $data = [];
-        foreach ($records as $row) {
-            $data[] = [
-                'date' => $row['transaction_date'],
-                'type' => $row['transaction_type'],
-                'amount' => $row['amount'],
-                'category' => $row['category'],
-                'unit' => $row['unit_name'] ?? '',
-                'church' => $row['church_name'] ?? '',
-                'description' => $row['description'] ?? '',
+        $exportData = [];
+        $totalAmount = 0.0;
+        foreach ($records as $record) {
+            $amount = (float)$record['amount'];
+            $totalAmount += $amount;
+            $exportData[] = [
+                'date' => $record['transaction_date'],
+                'title' => $record['title'],
+                'category' => $record['category'],
+                'amount' => '₦' . number_format($amount, 2),
+                'description' => $record['description'] ?? ''
             ];
         }
 
-        $headers = ['Date', 'Type', 'Amount', 'Category', 'Unit', 'Church', 'Description'];
-        $format = strtolower($this->request->get('format', 'csv'));
-        $suffix = $churchId ? '_church_' . $churchId : '_all';
-        $baseName = 'finance' . $suffix . '_' . date('Y-m-d_His');
+        $headers = ['Date', 'Title', 'Category', 'Amount (₦)', 'Description'];
+        $timestamp = date('Y-m-d_H-i-s');
+        $filename = "my_giving_history_{$timestamp}";
 
-        switch ($format) {
-            case 'json':
-                ExportHelper::exportJSON($data, $baseName . '.json');
-                break;
-            case 'pdf':
-                // Build summary and "charts" sections for inclusion in the PDF
-                $summary = [];
-                $chartMonthly = [];
-                $chartIncomeByCategory = [];
-                $chartExpenseByCategory = [];
+        if ($format === 'csv') {
+            ExportHelper::exportCSV($exportData, $headers, $filename . '.csv');
+        } elseif ($format === 'pdf') {
+            $extraHtml = '<div style="margin-bottom: 20px;">';
+            $extraHtml .= '<h3>Summary Statistics</h3>';
+            $extraHtml .= '<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">';
+            $extraHtml .= '<tr style="background: #f8f9fa;"><th style="padding: 8px; border: 1px solid #dee2e6; text-align: left;">Total Contributions</th>';
+            $extraHtml .= '<td style="padding: 8px; border: 1px solid #dee2e6; font-weight: bold; color: #2e7d32;">₦' . number_format($totalAmount, 2) . '</td></tr>';
+            $extraHtml .= '<tr><th style="padding: 8px; border: 1px solid #dee2e6; text-align: left;">Total Records</th>';
+            $extraHtml .= '<td style="padding: 8px; border: 1px solid #dee2e6;">' . count($records) . '</td></tr>';
+            $extraHtml .= '</table></div>';
 
-                if ($churchId) {
-                    $summary = $this->financeModel->getSummaryByChurch($churchId, $startDate, $endDate);
-                    $chartMonthly = $this->financeModel->getMonthlyTotalsByChurch($churchId, $startDate, $endDate);
-                    $chartIncomeByCategory = $this->financeModel->getCategoryBreakdownByChurch($churchId, $startDate, $endDate, 'income');
-                    $chartExpenseByCategory = $this->financeModel->getCategoryBreakdownByChurch($churchId, $startDate, $endDate, 'expense');
-                } else {
-                    $summary = $this->financeModel->getSummary(null, $startDate, $endDate);
-                    $chartMonthly = $this->financeModel->getMonthlyTotals(null, $startDate, $endDate);
-                    $chartIncomeByCategory = $this->financeModel->getCategoryBreakdown(null, $startDate, $endDate, 'income');
-                    $chartExpenseByCategory = $this->financeModel->getCategoryBreakdown(null, $startDate, $endDate, 'expense');
-                }
-
-                $totalIncome = 0.0;
-                $totalExpense = 0.0;
-                foreach ($summary as $item) {
-                    if (($item['transaction_type'] ?? '') === 'income') {
-                        $totalIncome = (float) ($item['total'] ?? 0);
-                    } elseif (($item['transaction_type'] ?? '') === 'expense') {
-                        $totalExpense = (float) ($item['total'] ?? 0);
-                    }
-                }
-                $netTotal = $totalIncome - $totalExpense;
-
-                $extraHtml = '';
-
-                // Summary section
-                $extraHtml .= '<h2 class="section-title">Summary</h2>';
-                $extraHtml .= '<table class="summary-table">
-    <thead>
-        <tr>
-            <th>Metric</th>
-            <th>Amount</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>Total Income</td>
-            <td>$' . number_format($totalIncome, 2) . '</td>
-        </tr>
-        <tr>
-            <td>Total Expense</td>
-            <td>$' . number_format($totalExpense, 2) . '</td>
-        </tr>
-        <tr>
-            <td>Net Total</td>
-            <td>$' . number_format($netTotal, 2) . '</td>
-        </tr>
-    </tbody>
-</table>';
-
-                // Monthly chart data as table
-                if (!empty($chartMonthly)) {
-                    $extraHtml .= '<h2 class="section-title">Income vs Expense by Month</h2>';
-                    $extraHtml .= '<table>
-    <thead>
-        <tr>
-            <th>Month</th>
-            <th>Income</th>
-            <th>Expense</th>
-        </tr>
-    </thead>
-    <tbody>';
-                    foreach ($chartMonthly as $row) {
-                        $label = $row['label'] ?? '';
-                        $income = (float) ($row['income'] ?? 0);
-                        $expense = (float) ($row['expense'] ?? 0);
-                        $extraHtml .= '<tr>
-            <td>' . htmlspecialchars((string) $label) . '</td>
-            <td>$' . number_format($income, 2) . '</td>
-            <td>$' . number_format($expense, 2) . '</td>
-        </tr>';
-                    }
-                    $extraHtml .= '
-    </tbody>
-</table>';
-                }
-
-                // Income by category
-                if (!empty($chartIncomeByCategory)) {
-                    $extraHtml .= '<h2 class="section-title">Income by Category</h2>';
-                    $extraHtml .= '<table>
-    <thead>
-        <tr>
-            <th>Category</th>
-            <th>Total</th>
-        </tr>
-    </thead>
-    <tbody>';
-                    foreach ($chartIncomeByCategory as $row) {
-                        $category = $row['category'] ?? 'Other';
-                        $total = (float) ($row['total'] ?? 0);
-                        $extraHtml .= '<tr>
-            <td>' . htmlspecialchars((string) $category) . '</td>
-            <td>$' . number_format($total, 2) . '</td>
-        </tr>';
-                    }
-                    $extraHtml .= '
-    </tbody>
-</table>';
-                }
-
-                // Expense by category
-                if (!empty($chartExpenseByCategory)) {
-                    $extraHtml .= '<h2 class="section-title">Expense by Category</h2>';
-                    $extraHtml .= '<table>
-    <thead>
-        <tr>
-            <th>Category</th>
-            <th>Total</th>
-        </tr>
-    </thead>
-    <tbody>';
-                    foreach ($chartExpenseByCategory as $row) {
-                        $category = $row['category'] ?? 'Other';
-                        $total = (float) ($row['total'] ?? 0);
-                        $extraHtml .= '<tr>
-            <td>' . htmlspecialchars((string) $category) . '</td>
-            <td>$' . number_format($total, 2) . '</td>
-        </tr>';
-                    }
-                    $extraHtml .= '
-    </tbody>
-</table>';
-                }
-
-                ExportHelper::exportPDF($data, $headers, 'Finance Export', $baseName . '.pdf', $extraHtml);
-                break;
-            case 'excel':
-            case 'xls':
-            case 'xlsx':
-                ExportHelper::exportExcel($data, $headers, $baseName . '.xls');
-                break;
-            case 'csv':
-            default:
-                ExportHelper::exportCSV($data, $headers, $baseName . '.csv');
-                break;
+            ExportHelper::exportPDF($exportData, $headers, 'My Giving History', $filename . '.pdf', $extraHtml);
         }
+        exit;
+    }
+
+    /**
+     * Display Cashflow Statement & YoY Analysis
+     */
+    public function cashflow($churchId = null) {
+        $effectiveChurchId = $churchId ? (int)$churchId : ($this->session->isHeadPastor() ? (int)$this->session->getHeadPastorChurchId() : null);
+        $year = (int)($this->request->get('year') ?: date('Y'));
+
+        $cashflowData = $this->model->getCashflowStatement($effectiveChurchId, $year);
+        $yoyData = $this->model->getYearOverYearComparison($effectiveChurchId, $year);
+
+        $churchModel = new \App\Models\Church();
+        $churches = $churchModel->getChurches([]);
+        $currentChurch = $effectiveChurchId ? $churchModel->find($effectiveChurchId) : null;
+
+        $this->render($this->viewPath . '/cashflow', [
+            'title' => 'Cashflow Statement & Analytics',
+            'pageTitle' => 'Cashflow Statement & Year-over-Year Growth',
+            'cashflow' => $cashflowData,
+            'yoy' => $yoyData,
+            'churches' => $churches,
+            'currentChurch' => $currentChurch,
+            'churchId' => $effectiveChurchId,
+            'selectedYear' => $year,
+            'breadcrumbs' => [
+                ['label' => 'Dashboard', 'url' => ''],
+                ['label' => 'Finance', 'url' => 'finance'],
+                ['label' => 'Cashflow & Analytics', 'active' => true]
+            ]
+        ]);
+    }
+
+    /**
+     * Display Financial Audit Trail
+     */
+    public function auditTrail($churchId = null) {
+        $effectiveChurchId = $churchId ? (int)$churchId : ($this->session->isHeadPastor() ? (int)$this->session->getHeadPastorChurchId() : null);
+        $logs = $this->model->getFinancialAuditLogs($effectiveChurchId, 100);
+
+        $churchModel = new \App\Models\Church();
+        $churches = $churchModel->getChurches([]);
+        $currentChurch = $effectiveChurchId ? $churchModel->find($effectiveChurchId) : null;
+
+        $this->render($this->viewPath . '/audit_trail', [
+            'title' => 'Financial Audit Trail',
+            'pageTitle' => 'Financial Audit Trail & Change Log',
+            'logs' => $logs,
+            'churches' => $churches,
+            'currentChurch' => $currentChurch,
+            'churchId' => $effectiveChurchId,
+            'breadcrumbs' => [
+                ['label' => 'Dashboard', 'url' => ''],
+                ['label' => 'Finance', 'url' => 'finance'],
+                ['label' => 'Audit Trail', 'active' => true]
+            ]
+        ]);
     }
 }
-

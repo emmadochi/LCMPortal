@@ -18,6 +18,18 @@ class FileUpload {
 
         // Validate file type
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        
+        // Strict blacklist of executable and script extensions that are forbidden under all circumstances
+        $blockedExtensions = [
+            'php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'php8', 'phps', 'phar', 'pht',
+            'html', 'htm', 'js', 'jsp', 'asp', 'aspx', 'sh', 'cgi', 'bat', 'cmd', 'exe', 'pl',
+            'htaccess', 'htpasswd', 'ini', 'conf'
+        ];
+        
+        if (in_array($ext, $blockedExtensions) || empty($ext)) {
+            return ['success' => false, 'error' => 'Forbidden file extension or empty extension.'];
+        }
+
         if (!empty($this->allowedTypes) && !in_array($ext, $this->allowedTypes)) {
             return ['success' => false, 'error' => 'File type not allowed. Allowed types: ' . implode(', ', $this->allowedTypes)];
         }

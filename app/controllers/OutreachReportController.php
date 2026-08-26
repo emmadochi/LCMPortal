@@ -26,20 +26,43 @@ class OutreachReportController extends BaseController {
         $this->churchModel = new Church();
         $this->unitModel = new Unit();
         $this->eventModel = new Event();
-        $this->authorize('manage_reports');
+        
+        // Allow head pastors to access outreach reports
+        // They have 'view_all_reports' permission which should be sufficient for viewing
+        // For create/update/delete, we'll check 'manage_reports' or 'create_reports' in specific methods
+        if (!$this->session->hasPermission('manage_reports') && 
+            !$this->session->hasPermission('view_all_reports') && 
+            !$this->session->hasPermission('create_reports')) {
+            $this->redirect('/unauthorized');
+        }
     }
 
     /**
      * List outreach reports with optional church filter and filters
      */
-    public function index() {
-        $churchId = (int) $this->request->get('church_id', 0);
+    public function index($churchId = null) {
+        // Automatically redirect Head Pastors to their dedicated church-scoped dashboard
+        // if they access the base /outreach-reports route
+        if ($this->session->isHeadPastor() && $churchId === null) {
+            $hId = $this->session->getHeadPastorChurchId();
+            $this->redirect("/churches/{$hId}/outreach");
+        }
+
+        $churchIdParam = (int) $this->request->get('church_id', 0);
+        if (!$churchId && $churchIdParam) {
+            $churchId = $churchIdParam;
+        }
+        
+        if ($churchId) {
+            $this->checkChurchAccess($churchId);
+        }
+
         $status = $this->request->get('status', '');
         $search = $this->request->get('search', '');
         $churchFilter = null;
         $reports = [];
 
-        if ($churchId && $this->session->get('user_role') === 'admin') {
+        if ($churchId) {
             $church = $this->churchModel->find($churchId);
             if ($church) {
                 $unitIds = $this->churchModel->getChurchUnitIds($churchId);
@@ -91,7 +114,22 @@ class OutreachReportController extends BaseController {
     /**
      * Show create form
      */
-    public function create() {
+    public function create($churchId = null) {
+        $churchIdParam = (int) $this->request->get('church_id', 0);
+        if (!$churchId && $churchIdParam) {
+            $churchId = $churchIdParam;
+        }
+
+        if ($churchId) {
+            $this->checkChurchAccess($churchId);
+        }
+
+        // Only users with manage_reports or create_reports permission can create reports
+        if (!$this->session->hasPermission('manage_reports') && !$this->session->hasPermission('create_reports')) {
+            $this->session->setFlash('error', 'You do not have permission to create outreach reports.');
+            $this->redirect('/outreach-reports');
+        }
+        
         $csrfToken = Security::generateCSRFToken();
         $churches = $this->churchModel->getChurches([]);
         $units = $this->unitModel->getActiveUnits();
@@ -117,7 +155,22 @@ class OutreachReportController extends BaseController {
     /**
      * Store new outreach report and related records
      */
-    public function store() {
+    public function store($churchId = null) {
+        $churchIdParam = (int) $this->request->post('church_id', 0);
+        if (!$churchId && $churchIdParam) {
+            $churchId = $churchIdParam;
+        }
+
+        if ($churchId) {
+            $this->checkChurchAccess($churchId);
+        }
+
+        // Only users with manage_reports or create_reports permission can create reports
+        if (!$this->session->hasPermission('manage_reports') && !$this->session->hasPermission('create_reports')) {
+            $this->session->setFlash('error', 'You do not have permission to create outreach reports.');
+            $this->redirect('/outreach-reports');
+        }
+        
         $token = $this->request->post('_token');
         if (!$token || !Security::validateCSRFToken($token)) {
             $this->session->setFlash('error', 'Invalid security token.');
@@ -172,7 +225,18 @@ class OutreachReportController extends BaseController {
     /**
      * Show single report with all sections
      */
-    public function show($id) {
+    public function show($idOrChurchId, $id = null) {
+        if ($id === null) {
+            $id = $idOrChurchId;
+            $churchId = null;
+        } else {
+            $churchId = $idOrChurchId;
+        }
+
+        if ($churchId) {
+            $this->checkChurchAccess($churchId);
+        }
+
         $report = $this->reportModel->find($id);
         if (!$report) {
             $this->session->setFlash('error', 'Report not found.');
@@ -215,7 +279,24 @@ class OutreachReportController extends BaseController {
     /**
      * Show edit form
      */
-    public function edit($id) {
+    public function edit($idOrChurchId, $id = null) {
+        if ($id === null) {
+            $id = $idOrChurchId;
+            $churchId = null;
+        } else {
+            $churchId = $idOrChurchId;
+        }
+
+        if ($churchId) {
+            $this->checkChurchAccess($churchId);
+        }
+
+        // Only users with manage_reports or create_reports permission can edit reports
+        if (!$this->session->hasPermission('manage_reports') && !$this->session->hasPermission('create_reports')) {
+            $this->session->setFlash('error', 'You do not have permission to edit outreach reports.');
+            $this->redirect('/outreach-reports');
+        }
+        
         $report = $this->reportModel->find($id);
         if (!$report) {
             $this->session->setFlash('error', 'Report not found.');
@@ -258,7 +339,24 @@ class OutreachReportController extends BaseController {
     /**
      * Update outreach report and related records
      */
-    public function update($id) {
+    public function update($idOrChurchId, $id = null) {
+        if ($id === null) {
+            $id = $idOrChurchId;
+            $churchId = null;
+        } else {
+            $churchId = $idOrChurchId;
+        }
+
+        if ($churchId) {
+            $this->checkChurchAccess($churchId);
+        }
+
+        // Only users with manage_reports or create_reports permission can update reports
+        if (!$this->session->hasPermission('manage_reports') && !$this->session->hasPermission('create_reports')) {
+            $this->session->setFlash('error', 'You do not have permission to update outreach reports.');
+            $this->redirect('/outreach-reports');
+        }
+        
         $report = $this->reportModel->find($id);
         if (!$report) {
             $this->session->setFlash('error', 'Report not found.');
@@ -314,7 +412,24 @@ class OutreachReportController extends BaseController {
     /**
      * Delete report (and related records via CASCADE)
      */
-    public function delete($id) {
+    public function delete($idOrChurchId, $id = null) {
+        if ($id === null) {
+            $id = $idOrChurchId;
+            $churchId = null;
+        } else {
+            $churchId = $idOrChurchId;
+        }
+
+        if ($churchId) {
+            $this->checkChurchAccess($churchId);
+        }
+
+        // Only users with manage_reports permission can delete reports
+        if (!$this->session->hasPermission('manage_reports')) {
+            $this->session->setFlash('error', 'You do not have permission to delete outreach reports.');
+            $this->redirect('/outreach-reports');
+        }
+        
         $token = $this->request->post('_token');
         if (!$token || !Security::validateCSRFToken($token)) {
             $this->session->setFlash('error', 'Invalid security token.');
@@ -338,10 +453,24 @@ class OutreachReportController extends BaseController {
     /**
      * Export outreach reports (CSV, Excel, JSON, PDF)
      */
-    public function export() {
-        $churchId = (int) $this->request->get('church_id', 0);
+    public function export($churchId = null) {
+        $churchIdParam = (int) $this->request->get('church_id', 0);
+        if (!$churchId && $churchIdParam) {
+            $churchId = $churchIdParam;
+        }
+
+        if ($churchId) {
+            $this->checkChurchAccess($churchId);
+        }
+
+        // Only users with manage_reports or view_all_reports permission can export
+        if (!$this->session->hasPermission('manage_reports') && !$this->session->hasPermission('view_all_reports')) {
+            $this->session->setFlash('error', 'You do not have permission to export outreach reports.');
+            $this->redirect('/outreach-reports');
+        }
+        
         $reports = [];
-        if ($churchId && $this->session->get('user_role') === 'admin') {
+        if ($churchId) {
             $church = $this->churchModel->find($churchId);
             if ($church) {
                 $unitIds = $this->churchModel->getChurchUnitIds($churchId);
@@ -494,5 +623,28 @@ class OutreachReportController extends BaseController {
                 $stmt->execute();
             }
         }
+    }
+    private function checkChurchAccess($churchId) {
+        if (!$churchId) return true;
+        
+        $userRole = $this->session->get('user_role');
+        
+        // Admins can access any church
+        if ($userRole === 'admin') {
+            return true;
+        }
+        
+        // Head pastors can only access their assigned church
+        if ($this->session->isHeadPastor()) {
+            $headPastorChurchId = $this->session->getHeadPastorChurchId();
+            if ($headPastorChurchId == $churchId) {
+                return true;
+            }
+        }
+        
+        // If we get here, user doesn't have access
+        $this->session->setFlash('error', 'You do not have permission to access these reports.');
+        $this->redirect('/unauthorized');
+        exit;
     }
 }

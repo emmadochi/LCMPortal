@@ -64,12 +64,17 @@ class AuthController extends BaseController {
         // Clear any previous flash messages (e.g. from a failed attempt)
         $this->session->remove('_flash');
 
+        // Regenerate session ID to prevent Session Fixation
+        session_regenerate_id(true);
+
         // Set session data
         $this->session->set('user_id', $user['id']);
         $this->session->set('user_email', $user['email']);
         $this->session->set('user_name', $user['first_name'] . ' ' . $user['last_name']);
         $this->session->set('user_role', $user['role']);
-        $this->session->set('user_permissions', $this->getUserPermissions($user['role']));
+        
+        // Get enhanced permissions that account for pastor-director combinations
+        $this->session->set('user_permissions', $this->getEnhancedUserPermissions($user));
         if (!empty($user['profile_picture'])) {
             $this->session->set('user_profile_picture', $user['profile_picture']);
         } else {
@@ -84,10 +89,39 @@ class AuthController extends BaseController {
             $this->session->remove('head_pastor_church_id');
         }
 
+        // Store director units if user is a director of any unit
+        $directorUnits = $this->userModel->getDirectorUnits($user['id']);
+        if (!empty($directorUnits)) {
+            $this->session->set('director_units', $directorUnits);
+            $this->session->set('is_director', true);
+        } else {
+            $this->session->remove('director_units');
+            $this->session->set('is_director', false);
+        }
+
+        // Store unit head assignments
+        $unitHeadAssignments = $this->userModel->getUnitHeadAssignments($user['id']);
+        if (!empty($unitHeadAssignments)) {
+            $this->session->set('unit_head_assignments', $unitHeadAssignments);
+        } else {
+            $this->session->remove('unit_head_assignments');
+        }
+
+        // Store pastor information
+        $isPastor = $this->userModel->isPastor($user['id']);
+        $this->session->set('is_pastor', $isPastor);
+        
+        // Store pastor-director combination information
+        $isPastorDirector = $isPastor && !empty($directorUnits);
+        $this->session->set('is_pastor_director', $isPastorDirector);
+
         $canSendNotifications = $this->userModel->hasPermission($user['id'], 'send_broadcast_notifications')
             || !empty($headPastorChurch)
-            || !empty($this->userModel->getDirectorUnits($user['id']));
+            || !empty($directorUnits);
         $this->session->set('can_send_notifications', $canSendNotifications);
+
+        // Log successful login
+        error_log("User {$user['email']} (ID: {$user['id']}) logged in successfully");
 
         // Log activity
         ActivityLog::log(
@@ -98,8 +132,20 @@ class AuthController extends BaseController {
             "User logged in: {$user['email']}"
         );
 
-        // Redirect based on role
-        $this->redirect('/');
+        // Professional redirect handling
+        $redirectUrl = $this->session->get('redirect_after_login');
+        
+        // Remove redirect URL from session to prevent reuse
+        $this->session->remove('redirect_after_login');
+        
+        // Validate redirect URL to prevent open redirect vulnerabilities
+        if ($redirectUrl && $this->isValidRedirectUrl($redirectUrl)) {
+            error_log("Redirecting user {$user['email']} to stored URL: $redirectUrl");
+            $this->redirect($redirectUrl);
+        } else {
+            error_log("Redirecting user {$user['email']} to default dashboard");
+            $this->redirect('/');
+        }
     }
 
     public function logout() {
@@ -119,9 +165,26 @@ class AuthController extends BaseController {
 
         // Clear session completely
         $this->session->destroy();
-        // Start new session to avoid session reuse issues
-        session_start();
-        session_destroy();
+
+        // Expire session cookie on the client side
+        $configPath = __DIR__ . '/../../config/config.php';
+        $sessionName = 'church_portal_session';
+        if (file_exists($configPath)) {
+            $config = require $configPath;
+            $sessionName = $config['session']['name'] ?? $sessionName;
+        }
+
+        if (isset($_COOKIE[$sessionName])) {
+            $secure = isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] === 'on' || $_SERVER['HTTPS'] === 1 || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+            setcookie($sessionName, '', [
+                'expires' => time() - 3600,
+                'path' => '/',
+                'domain' => '',
+                'secure' => $secure,
+                'httponly' => true,
+                'samesite' => 'Lax'
+            ]);
+        }
         
         $this->redirect('/login');
     }
@@ -140,7 +203,19 @@ class AuthController extends BaseController {
                 'manage_media',
                 'manage_projects',
                 'view_dashboard',
-                'send_broadcast_notifications'
+                'send_broadcast_notifications',
+                'manage_attendance'
+            ],
+            'head_pastor' => [
+                'manage_church_details',
+                'view_membership_dashboard',
+                'manage_church_finance',
+                'manage_church_property',
+                'manage_attendance',
+                'manage_reports',
+                'send_church_notifications',
+                'view_dashboard',
+                'view_all_reports'
             ],
             'director' => [
                 'manage_units',
@@ -157,6 +232,7 @@ class AuthController extends BaseController {
                 'view_dashboard'
             ],
             'pastor' => [
+                'manage_reports',
                 'view_all_reports',
                 'view_dashboard'
             ],
@@ -166,6 +242,23 @@ class AuthController extends BaseController {
         ];
 
         return $rolePermissions[$role] ?? [];
+    }
+
+    /**
+     * Get enhanced permissions that account for pastor-director role combinations
+     */
+    private function getEnhancedUserPermissions($user) {
+        $basePermissions = $this->getUserPermissions($user['role']);
+        
+        // Check if user is also a unit director (for pastors who direct units)
+        $directorUnits = $this->userModel->getDirectorUnits($user['id']);
+        if (!empty($directorUnits)) {
+            $directorPermissions = $this->getUserPermissions('director');
+            $basePermissions = array_merge($basePermissions, $directorPermissions);
+            $basePermissions = array_unique($basePermissions);
+        }
+        
+        return $basePermissions;
     }
 
     /**
@@ -361,6 +454,37 @@ class AuthController extends BaseController {
 
         $this->session->setFlash('success', 'Password successfully reset. You can now login with your new password.');
         $this->redirect('/login');
+    }
+
+    /**
+     * Validate redirect URL to prevent open redirect vulnerabilities
+     */
+    private function isValidRedirectUrl($url) {
+        // Only allow relative URLs or URLs within our domain
+        if (empty($url)) {
+            return false;
+        }
+        
+        // Allow relative URLs (starting with /)
+        if (strpos($url, '/') === 0) {
+            // Prevent directory traversal attacks
+            if (strpos($url, '..') !== false) {
+                return false;
+            }
+            return true;
+        }
+        
+        // For absolute URLs, ensure they're to our own domain
+        $request = new \App\Core\Request();
+        $basePath = $request->basePath();
+        $baseUrl = $_SERVER['HTTP_HOST'] ?? '';
+        
+        // Check if URL starts with our base path
+        if (strpos($url, $basePath) === 0) {
+            return true;
+        }
+        
+        return false;
     }
 
     /**

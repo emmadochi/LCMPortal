@@ -7,7 +7,7 @@ abstract class BaseModel {
     protected $table;
     protected $primaryKey = 'id';
     protected $fillable = [];
-    protected $db;
+    public $db;
 
     public function __construct() {
         $this->db = Database::getInstance();

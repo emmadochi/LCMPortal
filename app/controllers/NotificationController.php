@@ -38,9 +38,9 @@ class NotificationController extends BaseController {
     }
 
     /**
-     * Get notifications for current user (AJAX)
+     * Get personal notifications for current user (AJAX API)
      */
-    public function index() {
+    public function apiList() {
         $userId = $this->session->get('user_id');
         if (!$userId) {
             $this->json(['success' => false, 'message' => 'Not authenticated'], 401);
@@ -70,6 +70,85 @@ class NotificationController extends BaseController {
             'success' => true,
             'notifications' => $notifications,
             'unread_count' => $unreadCount
+        ]);
+    }
+
+    /**
+     * Display notification dashboard (Broadcast history)
+     * 
+     * @param int|null $churchId
+     */
+    public function index($churchId = null) {
+        $userId = $this->session->get('user_id');
+        $userRole = $this->session->get('user_role');
+
+        // Determine church scope
+        if ($this->session->isHeadPastor()) {
+            $churchId = $this->session->getHeadPastorChurchId();
+        } elseif ($userRole === 'admin') {
+            $churchId = $churchId ?: $this->session->get('church_id');
+        } else {
+            $churchId = $this->session->get('church_id');
+        }
+
+        if (!$churchId && $userRole !== 'admin') {
+            $this->session->setFlash('error', 'Please select a church first.');
+            $this->redirect('/');
+            return;
+        }
+
+        $broadcastModel = new \App\Models\NotificationBroadcast();
+        
+        // Admins see everything, Head Pastors see their church's broadcasts
+        // Note: Currently notification_broadcasts table doesn't have church_id directly, 
+        // it uses audience_scope. We might need to filter manually or update schema.
+        $allBroadcasts = $broadcastModel->getBroadcastsWithSender(100);
+        
+        $filteredBroadcasts = [];
+        $stats = [
+            'total_sent' => 0,
+            'in_app' => 0,
+            'email' => 0,
+            'recipients' => 0
+        ];
+
+        if ($userRole === 'admin' && !$churchId) {
+            $filteredBroadcasts = $allBroadcasts;
+        } else {
+            foreach ($allBroadcasts as $b) {
+                $scope = json_decode($b['audience_scope'], true);
+                if ($userRole === 'admin' || 
+                    (isset($scope['church_id']) && (int)$scope['church_id'] === (int)$churchId) ||
+                    $b['audience_type'] === 'all' ||
+                    $b['audience_type'] === 'roles') {
+                    $filteredBroadcasts[] = $b;
+                }
+            }
+        }
+
+        foreach ($filteredBroadcasts as $b) {
+            $stats['total_sent']++;
+            if ($b['channels'] === 'in_app' || $b['channels'] === 'both') $stats['in_app']++;
+            if ($b['channels'] === 'email' || $b['channels'] === 'both') $stats['email']++;
+            $stats['recipients'] += (int)$b['recipient_count'];
+        }
+
+        $churchName = 'All Churches';
+        if ($churchId) {
+            $churchModel = new Church();
+            $church = $churchModel->find($churchId);
+            $churchName = $church['name'] ?? 'Church #' . $churchId;
+        }
+
+        $this->render('notifications/index', [
+            'title' => 'Notification Management - ' . $churchName,
+            'pageTitle' => 'Notification Management',
+            'broadcasts' => $filteredBroadcasts,
+            'stats' => $stats,
+            'churchId' => $churchId,
+            'churchName' => $churchName,
+            'unreadCount' => $this->notificationModel->getUnreadCount($userId),
+            'canSend' => $this->canSendNotifications()
         ]);
     }
 
@@ -135,16 +214,16 @@ class NotificationController extends BaseController {
     }
 
     /**
-     * Show notifications page
+     * Show personal notifications page
      */
     public function show() {
         $userId = $this->session->get('user_id');
         $notifications = $this->notificationModel->getUserNotifications($userId, 50);
         $unreadCount = $this->notificationModel->getUnreadCount($userId);
 
-        $this->render('notifications/index', [
-            'title' => 'Notifications',
-            'pageTitle' => 'Notifications',
+        $this->render('notifications/personal', [
+            'title' => 'My Notifications',
+            'pageTitle' => 'My Notifications',
             'notifications' => $notifications,
             'unreadCount' => $unreadCount
         ]);

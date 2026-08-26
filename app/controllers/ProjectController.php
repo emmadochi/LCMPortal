@@ -35,13 +35,21 @@ class ProjectController extends BaseController {
             $church = $this->churchModel->find($churchId);
             if ($church) {
                 $unitIds = $this->churchModel->getChurchUnitIds($churchId);
-                $projects = $this->projectModel->getProjectsWithDetailsByUnitIds($unitIds, 'created_at DESC');
+                $projects = $this->projectModel->getProjectsWithDetailsByUnitIds($unitIds, 'p.created_at DESC');
                 $churchFilter = ['id' => $churchId, 'name' => $church['name']];
+            }
+        } elseif ($this->session->isHeadPastor()) {
+            $headId = $this->session->getHeadPastorChurchId();
+            $church = $this->churchModel->find($headId);
+            if ($church) {
+                $unitIds = $this->churchModel->getChurchUnitIds($headId);
+                $projects = $this->projectModel->getProjectsWithDetailsByUnitIds($unitIds, 'p.created_at DESC');
+                $churchFilter = ['id' => $headId, 'name' => $church['name']];
             }
         }
 
         if ($churchFilter === null) {
-            $projects = $this->projectModel->getProjectsWithDetails([], 'created_at DESC');
+            $projects = $this->projectModel->getProjectsWithDetails([], 'p.created_at DESC');
         }
         
         $this->render('projects/index', [
@@ -176,13 +184,21 @@ class ProjectController extends BaseController {
             $church = $this->churchModel->find($churchId);
             if ($church) {
                 $unitIds = $this->churchModel->getChurchUnitIds($churchId);
-                $projects = $this->projectModel->getProjectsWithDetailsByUnitIds($unitIds, 'created_at DESC');
+                $projects = $this->projectModel->getProjectsWithDetailsByUnitIds($unitIds, 'p.created_at DESC');
                 $churchFilter = ['id' => $churchId, 'name' => $church['name']];
+            }
+        } elseif ($this->session->isHeadPastor()) {
+            $headId = $this->session->getHeadPastorChurchId();
+            $church = $this->churchModel->find($headId);
+            if ($church) {
+                $unitIds = $this->churchModel->getChurchUnitIds($headId);
+                $projects = $this->projectModel->getProjectsWithDetailsByUnitIds($unitIds, 'p.created_at DESC');
+                $churchFilter = ['id' => $headId, 'name' => $church['name']];
             }
         }
 
         if ($churchFilter === null) {
-            $projects = $this->projectModel->getProjectsWithDetails([], 'created_at DESC');
+            $projects = $this->projectModel->getProjectsWithDetails([], 'p.created_at DESC');
         }
 
         $rows = [];

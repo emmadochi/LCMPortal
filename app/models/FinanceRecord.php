@@ -11,7 +11,7 @@ class FinanceRecord extends BaseModel {
     /**
      * Get finance records for a set of unit IDs (e.g. church's units), optionally filtered by date range.
      */
-    public function getFinanceWithDetailsByUnitIds(array $unitIds, $orderBy = null, $startDate = null, $endDate = null) {
+    public function getFinanceWithDetailsByUnitIds(array $unitIds, $orderBy = null, $startDate = null, $endDate = null, $limit = null) {
         if (empty($unitIds)) {
             return [];
         }
@@ -38,6 +38,13 @@ class FinanceRecord extends BaseModel {
         } else {
             $sql .= " ORDER BY f.transaction_date DESC, f.created_at DESC";
         }
+        
+        if ($limit) {
+            $sql .= " LIMIT ?";
+            $params[] = (int)$limit;
+            $types .= 'i';
+        }
+        
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param($types, ...$params);
         $stmt->execute();
@@ -297,6 +304,43 @@ class FinanceRecord extends BaseModel {
     }
 
     /**
+     * Get financial summary for all units in a church
+     */
+    public function getSummaryByUnitsInChurch(int $churchId, $startDate = null, $endDate = null) {
+        $sql = "SELECT 
+                    u.id as unit_id,
+                    u.name as unit_name,
+                    SUM(CASE WHEN fr.transaction_type = 'income' THEN fr.amount ELSE 0 END) as total_income,
+                    SUM(CASE WHEN fr.transaction_type = 'expense' THEN fr.amount ELSE 0 END) as total_expense,
+                    COUNT(fr.id) as transaction_count
+                FROM units u
+                JOIN church_units cu ON u.id = cu.unit_id AND cu.church_id = ?
+                LEFT JOIN finance_records fr ON u.id = fr.unit_id";
+        
+        $params = [$churchId];
+        $types = "i";
+
+        if ($startDate) {
+            $sql .= " AND fr.transaction_date >= ?";
+            $params[] = $startDate;
+            $types .= "s";
+        }
+
+        if ($endDate) {
+            $sql .= " AND fr.transaction_date <= ?";
+            $params[] = $endDate;
+            $types .= "s";
+        }
+
+        $sql .= " GROUP BY u.id, u.name ORDER BY unit_name ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
      * Get summary statistics grouped by church (for global admin view).
      * Returns one row per church: church_id, church_name, total_income, total_expense, transaction_count.
      */
@@ -382,6 +426,50 @@ class FinanceRecord extends BaseModel {
     }
 
     /**
+     * Get all financial records scoped by church_id
+     */
+    public function getByChurchId(int $churchId, $orderBy = null, $startDate = null, $endDate = null) {
+        $sql = "SELECT 
+                    f.*, 
+                    u.name as unit_name, 
+                    us.first_name, 
+                    us.last_name,
+                    member.first_name AS member_first_name,
+                    member.last_name AS member_last_name
+                FROM finance_records f 
+                LEFT JOIN units u ON f.unit_id = u.id 
+                LEFT JOIN users us ON f.recorded_by = us.id
+                LEFT JOIN users member ON f.member_id = member.id
+                WHERE f.church_id = ?";
+        
+        $params = [$churchId];
+        $types = "i";
+        
+        if ($startDate) {
+            $sql .= " AND f.transaction_date >= ?";
+            $params[] = $startDate;
+            $types .= 's';
+        }
+        
+        if ($endDate) {
+            $sql .= " AND f.transaction_date <= ?";
+            $params[] = $endDate;
+            $types .= 's';
+        }
+        
+        if ($orderBy) {
+            $sql .= " ORDER BY {$orderBy}";
+        } else {
+            $sql .= " ORDER BY f.transaction_date DESC, f.created_at DESC";
+        }
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
      * Get category breakdown scoped by church_id.
      */
     public function getCategoryBreakdownByChurch(int $churchId, $startDate = null, $endDate = null, $transactionType = 'income') {
@@ -420,5 +508,159 @@ class FinanceRecord extends BaseModel {
         }
         return $result;
     }
+
+    /**
+     * Generate structured Cashflow Statement (Monthly breakdown for a year)
+     */
+    public function getCashflowStatement($churchId = null, $year = null) {
+        $year = $year ?: date('Y');
+        $months = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $monthNum = str_pad($m, 2, '0', STR_PAD_LEFT);
+            $monthKey = "{$year}-{$monthNum}";
+            $months[$monthKey] = [
+                'month_name' => date('F', mktime(0, 0, 0, $m, 10)),
+                'month_short' => date('M', mktime(0, 0, 0, $m, 10)),
+                'month_key' => $monthKey,
+                'operating_inflows' => 0.0,
+                'operating_outflows' => 0.0,
+                'net_cashflow' => 0.0,
+                'closing_balance' => 0.0,
+                'categories_in' => [],
+                'categories_out' => []
+            ];
+        }
+
+        // Fetch all transactions for the year
+        $startDate = "{$year}-01-01";
+        $endDate = "{$year}-12-31";
+
+        $sql = "SELECT 
+                    DATE_FORMAT(transaction_date, '%Y-%m') AS month_key,
+                    transaction_type,
+                    category,
+                    SUM(amount) AS total
+                FROM finance_records
+                WHERE transaction_date >= ? AND transaction_date <= ?";
+        
+        $params = [$startDate, $endDate];
+        $types = "ss";
+
+        if ($churchId) {
+            $sql .= " AND church_id = ?";
+            $params[] = (int)$churchId;
+            $types .= "i";
+        }
+
+        $sql .= " GROUP BY month_key, transaction_type, category ORDER BY month_key ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        foreach ($rows as $row) {
+            $mKey = $row['month_key'];
+            if (isset($months[$mKey])) {
+                $amount = (float)$row['total'];
+                $cat = $row['category'] ?: 'Uncategorized';
+                if ($row['transaction_type'] === 'income') {
+                    $months[$mKey]['operating_inflows'] += $amount;
+                    $months[$mKey]['categories_in'][$cat] = ($months[$mKey]['categories_in'][$cat] ?? 0) + $amount;
+                } else {
+                    $months[$mKey]['operating_outflows'] += $amount;
+                    $months[$mKey]['categories_out'][$cat] = ($months[$mKey]['categories_out'][$cat] ?? 0) + $amount;
+                }
+            }
+        }
+
+        // Calculate running balance and net cashflow
+        $runningBalance = 0.0;
+        $totalInflowYear = 0.0;
+        $totalOutflowYear = 0.0;
+
+        foreach ($months as &$m) {
+            $m['net_cashflow'] = $m['operating_inflows'] - $m['operating_outflows'];
+            $runningBalance += $m['net_cashflow'];
+            $m['closing_balance'] = $runningBalance;
+            $totalInflowYear += $m['operating_inflows'];
+            $totalOutflowYear += $m['operating_outflows'];
+        }
+        unset($m);
+
+        return [
+            'year' => $year,
+            'months' => array_values($months),
+            'total_inflow' => $totalInflowYear,
+            'total_outflow' => $totalOutflowYear,
+            'net_annual_cashflow' => $totalInflowYear - $totalOutflowYear
+        ];
+    }
+
+    /**
+     * Get Year-over-Year (YoY) Growth & Comparison
+     */
+    public function getYearOverYearComparison($churchId = null, $currentYear = null) {
+        $currentYear = $currentYear ?: date('Y');
+        $previousYear = $currentYear - 1;
+
+        $currentData = $this->getCashflowStatement($churchId, $currentYear);
+        $previousData = $this->getCashflowStatement($churchId, $previousYear);
+
+        $incomeGrowth = $previousData['total_inflow'] > 0 
+            ? round((($currentData['total_inflow'] - $previousData['total_inflow']) / $previousData['total_inflow']) * 100, 1) 
+            : 0;
+
+        $expenseGrowth = $previousData['total_outflow'] > 0 
+            ? round((($currentData['total_outflow'] - $previousData['total_outflow']) / $previousData['total_outflow']) * 100, 1) 
+            : 0;
+
+        $netGrowth = $previousData['net_annual_cashflow'] != 0 
+            ? round((($currentData['net_annual_cashflow'] - $previousData['net_annual_cashflow']) / abs($previousData['net_annual_cashflow'])) * 100, 1) 
+            : 0;
+
+        return [
+            'current_year' => $currentYear,
+            'previous_year' => $previousYear,
+            'current' => $currentData,
+            'previous' => $previousData,
+            'income_growth_pct' => $incomeGrowth,
+            'expense_growth_pct' => $expenseGrowth,
+            'net_growth_pct' => $netGrowth
+        ];
+    }
+
+    /**
+     * Get financial audit trail logs from activity_logs
+     */
+    public function getFinancialAuditLogs($churchId = null, $limit = 50) {
+        $sql = "SELECT a.*, u.first_name, u.last_name, u.role 
+                FROM activity_logs a
+                LEFT JOIN users u ON a.user_id = u.id
+                WHERE a.action IN ('finance_created', 'finance_updated', 'finance_deleted', 'budget_created', 'budget_updated', 'budget_deleted', 'pledge_created', 'pledge_payment_recorded')
+                   OR a.action LIKE '%finance%' 
+                   OR a.action LIKE '%budget%' 
+                   OR a.action LIKE '%pledge%'";
+        
+        $params = [];
+        $types = "";
+
+        if ($churchId) {
+            $sql .= " AND (u.church_id = ? OR a.description LIKE ?)";
+            $params[] = (int)$churchId;
+            $params[] = "%church #" . $churchId . "%";
+            $types .= "is";
+        }
+
+        $sql .= " ORDER BY a.created_at DESC LIMIT ?";
+        $params[] = (int)$limit;
+        $types .= "i";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
 }
+
 

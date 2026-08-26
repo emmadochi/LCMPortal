@@ -9,6 +9,27 @@ class PropertyLog extends BaseModel {
     ];
 
     /**
+     * Get recent activity logs for a church's properties
+     */
+    public function getRecentActivityLogs($churchId, $limit = 10) {
+        $sql = "SELECT pl.*, 
+                       p.name AS property_name,
+                       u.first_name,
+                       u.last_name
+                FROM property_logs pl
+                INNER JOIN properties p ON pl.property_id = p.id
+                LEFT JOIN users u ON pl.user_id = u.id
+                WHERE p.church_id = ?
+                ORDER BY pl.created_at DESC
+                LIMIT ?";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("ii", $churchId, $limit);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
      * Get logs for a property
      */
     public function getPropertyLogs($propertyId, $limit = 50) {

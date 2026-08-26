@@ -23,7 +23,9 @@ class AttendanceController extends BaseController {
         $this->userModel = new User();
         
         // Check permission
-        $this->authorize('manage_attendance');
+        if (!$this->session->hasPermission('manage_attendance') && !$this->session->hasPermission('manage_unit_attendance')) {
+            $this->authorize('manage_attendance'); // This will trigger the redirection
+        }
     }
 
     /**
@@ -42,6 +44,14 @@ class AttendanceController extends BaseController {
                 $unitIds = $this->churchModel->getChurchUnitIds($churchId);
                 $churchFilter = ['id' => $churchId, 'name' => $church['name']];
                 $services = $this->attendanceModel->getServicesWithCounts($unitIds, $churchId);
+            }
+        } elseif ($this->session->isHeadPastor()) {
+            $headId = $this->session->getHeadPastorChurchId();
+            $church = $this->churchModel->find($headId);
+            if ($church) {
+                $unitIds = $this->churchModel->getChurchUnitIds($headId);
+                $churchFilter = ['id' => $headId, 'name' => $church['name']];
+                $services = $this->attendanceModel->getServicesWithCounts($unitIds, $headId);
             }
         }
 
@@ -244,13 +254,17 @@ class AttendanceController extends BaseController {
         // If church_id is not provided (common when navigating via sidebar), infer it from the user's units.
         // This enables "All church (main service)" for non-admin roles tied to a single church.
         if ($churchId <= 0 && !$isAdmin) {
-            $userId = (int) $this->session->get('user_id', 0);
-            if ($userId > 0) {
-                $userUnits = $this->userModel->getUnits($userId);
-                $unitIds = array_map(function ($u) { return (int)($u['id'] ?? 0); }, $userUnits);
-                $churchIds = $this->churchModel->getChurchIdsByUnitIds($unitIds);
-                if (count($churchIds) === 1) {
-                    $churchId = (int) $churchIds[0];
+            if ($this->session->isHeadPastor()) {
+                $churchId = $this->session->getHeadPastorChurchId();
+            } else {
+                $userId = (int) $this->session->get('user_id', 0);
+                if ($userId > 0) {
+                    $userUnits = $this->userModel->getUnits($userId);
+                    $unitIds = array_map(function ($u) { return (int)($u['id'] ?? 0); }, $userUnits);
+                    $churchIds = $this->churchModel->getChurchIdsByUnitIds($unitIds);
+                    if (count($churchIds) === 1) {
+                        $churchId = (int) $churchIds[0];
+                    }
                 }
             }
         }
@@ -264,6 +278,7 @@ class AttendanceController extends BaseController {
         }
 
         $units = [];
+        $churchFilter = null;
         // If a church is selected via query, always scope units to that church (permission already enforced).
         // This also enables the "All church (main service)" option for non-admin roles.
         if ($churchId) {
@@ -274,6 +289,7 @@ class AttendanceController extends BaseController {
                     $units[] = ['id' => $cu['unit_id'], 'name' => $cu['unit_name']];
                 }
                 $units[] = ['id' => 0, 'name' => 'All church (main service)'];
+                $churchFilter = ['id' => $churchId, 'name' => $church['name']];
             }
         }
         if (empty($units)) {
@@ -539,6 +555,38 @@ class AttendanceController extends BaseController {
                 ExportHelper::exportCSV($rows, $headers, $baseName . '.csv');
                 break;
         }
+    }
+
+    /**
+     * Show personal attendance history for the logged-in user
+     */
+    public function myHistory() {
+        $userId = $this->session->get('user_id');
+        $churchId = $this->session->get('church_id');
+        
+        $records = $this->attendanceModel->findAll([
+            'user_id' => $userId
+        ], 'event_date DESC');
+        
+        // Enrich with unit names
+        foreach ($records as &$record) {
+            if ($record['unit_id']) {
+                $unit = $this->unitModel->find($record['unit_id']);
+                $record['unit_name'] = $unit ? $unit['name'] : 'N/A';
+            } else {
+                $record['unit_name'] = 'General Service';
+            }
+        }
+
+        $this->render('attendance/my_history', [
+            'title' => 'My Attendance History',
+            'pageTitle' => 'My Attendance History',
+            'records' => $records,
+            'breadcrumbs' => [
+                ['label' => 'Dashboard', 'url' => '/'],
+                ['label' => 'Attendance History', 'active' => true]
+            ]
+        ]);
     }
 }
 

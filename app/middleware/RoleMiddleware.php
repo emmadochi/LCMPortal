@@ -3,6 +3,7 @@ namespace App\Middleware;
 
 use App\Core\Request;
 use App\Core\Session;
+use App\Models\Church;
 
 class RoleMiddleware {
     private $allowedRoles;
@@ -14,6 +15,11 @@ class RoleMiddleware {
     public function handle($next) {
         $session = Session::getInstance();
         $userRole = $session->get('user_role');
+        
+        // Admin has access to everything
+        if ($userRole === 'admin') {
+            return $next();
+        }
         
         if (!in_array($userRole, $this->allowedRoles)) {
             $request = new Request();

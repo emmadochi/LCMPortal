@@ -9,6 +9,7 @@ $title = $title ?? 'Login';
     <meta charset="utf-8" />
     <title><?= htmlspecialchars($title) ?> | Church Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?= \App\Utilities\Security::generateCSRFToken() ?>">
     <meta content="Church Reporting & Administrative Portal" name="description" />
     
     <!-- App favicon -->

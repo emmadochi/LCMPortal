@@ -6,6 +6,7 @@ use App\Models\Membership;
 use App\Models\Unit;
 use App\Models\Attendance;
 use App\Utilities\Security;
+use App\Models\ActivityLog;
 
 class MemberDirectoryController extends BaseController {
     
@@ -42,6 +43,11 @@ class MemberDirectoryController extends BaseController {
         $sortBy = $this->request->get('sort_by', 'name');
         $sortOrder = $this->request->get('sort_order', 'asc');
         
+        $isHeadPastor = $this->session->isHeadPastor();
+        
+        // Get the church ID if the user is a head pastor to enforce scoping
+        $churchId = $isHeadPastor ? $this->session->getHeadPastorChurchId() : null;
+        
         // Get all members with their membership details
         $members = $this->getAllMembersWithDetails([
             'search' => $search,
@@ -50,10 +56,16 @@ class MemberDirectoryController extends BaseController {
             'status' => $status,
             'sort_by' => $sortBy,
             'sort_order' => $sortOrder
-        ]);
+        ], $churchId);
         
-        // Get filter options
-        $units = $this->unitModel->getActiveUnits();
+        // Get filter options - scope units for head pastors
+        if ($isHeadPastor) {
+            $churchModel = new \App\Models\Church();
+            $units = $churchModel->getChurchUnits($churchId);
+        } else {
+            $units = $this->unitModel->getActiveUnits();
+        }
+        
         $membershipTypes = ['visitor', 'member', 'elder', 'deacon', 'pastor'];
         $statuses = ['active', 'inactive', 'suspended', 'transferred'];
         
@@ -74,59 +86,455 @@ class MemberDirectoryController extends BaseController {
             ]
         ]);
     }
+
+    /**
+     * Show create form
+     */
+    public function create() {
+        $csrfToken = Security::generateCSRFToken();
+        $roles = ['user', 'pastor', 'officer', 'director', 'admin'];
+        $membershipTypes = ['visitor', 'member', 'elder', 'deacon', 'pastor'];
+        $statuses = ['active', 'inactive', 'suspended', 'transferred'];
+        
+        $isHeadPastor = $this->session->isHeadPastor();
+        $churchId = $isHeadPastor ? $this->session->getHeadPastorChurchId() : null;
+        
+        // Scope units for head pastors
+        if ($isHeadPastor) {
+            $churchModel = new \App\Models\Church();
+            $units = $churchModel->getChurchUnits($churchId);
+        } else {
+            $units = $this->unitModel->getActiveUnits();
+        }
+        
+        $churches = [];
+        if (!$isHeadPastor) {
+            $churchModel = new \App\Models\Church();
+            $churches = $churchModel->findAll([], 'name ASC');
+        }
+        
+        $this->render('members/create', [
+            'title' => 'Create Member',
+            'pageTitle' => 'Create Member',
+            'csrf_token' => $csrfToken,
+            'roles' => $roles,
+            'units' => $units,
+            'membershipTypes' => $membershipTypes,
+            'statuses' => $statuses,
+            'churches' => $churches,
+            'isHeadPastor' => $isHeadPastor,
+            'breadcrumbs' => [
+                ['label' => 'Members', 'url' => '/members'],
+                ['label' => 'Create', 'active' => true]
+            ]
+        ]);
+    }
+
+    /**
+     * Store new member
+     */
+    public function store() {
+        // Validate CSRF
+        $token = $this->request->post('_token');
+        if (!$token || !Security::validateCSRFToken($token)) {
+            $this->session->setFlash('error', 'Invalid security token.');
+            $this->redirect('/members/create');
+        }
+
+        // Validate input
+        $isHeadPastor = $this->session->isHeadPastor();
+        $rules = [
+            'email' => 'required|email',
+            'password' => 'required|min:6',
+            'first_name' => 'required|min:2|max:100',
+            'last_name' => 'required|min:2|max:100',
+            'role' => 'required'
+        ];
+        
+        if (!$isHeadPastor && $this->request->post('role') !== 'admin') {
+            $rules['church_id'] = 'required';
+        }
+        
+        $validation = $this->validate($rules);
+
+        if (!$validation['valid']) {
+            $this->session->setFlash('errors', $validation['errors']);
+            $this->redirect('/members/create');
+        }
+
+        // Check if email already exists
+        $existingUser = $this->userModel->findByEmail($this->request->post('email'));
+        if ($existingUser) {
+            $this->session->setFlash('error', 'Email already exists.');
+            $this->redirect('/members/create');
+        }
+        $churchId = $isHeadPastor ? $this->session->getHeadPastorChurchId() : ($this->request->post('church_id') ? (int)$this->request->post('church_id') : null);
+
+        $data = [
+            'email' => $this->request->post('email'),
+            'password' => $this->request->post('password'), // Will be hashed in createUser
+            'first_name' => $this->request->post('first_name'),
+            'last_name' => $this->request->post('last_name'),
+            'role' => $this->request->post('role'),
+            'status' => $this->request->post('status', 'active'),
+            'church_id' => $churchId
+        ];
+
+        $id = $this->userModel->createUser($data);
+        if ($id) {
+            // Handle membership if unit_id is provided
+            $unitId = $this->request->post('unit_id');
+            if (!empty($unitId)) {
+                $unitId = (int)$unitId;
+                
+                $this->membershipModel->create([
+                    'user_id' => $id,
+                    'unit_id' => $unitId,
+                    'membership_type' => $this->request->post('membership_type', 'member'),
+                    'status' => 'active',
+                    'join_date' => $this->request->post('join_date', date('Y-m-d'))
+                ]);
+                
+                // Also add to unit_user table for core unit logic
+                try {
+                    $db = \App\Core\Database::getInstance();
+                    $stmt = $db->prepare("INSERT INTO unit_user (unit_id, user_id, role) VALUES (?, ?, ?)");
+                    $assignmentRole = 'member';
+                    $stmt->bind_param("iis", $unitId, $id, $assignmentRole);
+                    $stmt->execute();
+                } catch (\Exception $e) {
+                    error_log("Failed to assign user $id to unit $unitId: " . $e->getMessage());
+                }
+            }
+
+            // Log activity
+            ActivityLog::log(
+                $this->session->get('user_id'),
+                'create',
+                'User',
+                $id,
+                "Created user: {$data['first_name']} {$data['last_name']} ({$data['email']})"
+            );
+            
+            $this->session->setFlash('success', 'Member created successfully.');
+            $this->redirect("/members/{$id}");
+        } else {
+            $this->session->setFlash('error', 'Failed to create member.');
+            $this->redirect('/members/create');
+        }
+    }
     
     /**
      * Show detailed member profile
      */
     public function show($id) {
         $member = $this->userModel->find($id);
-        
+
         if (!$member) {
             $this->session->setFlash('error', 'Member not found.');
             $this->redirect('/members');
         }
-        
+
+        // Enforce church-scoping for Head Pastors (IDOR protection)
+        if ($this->session->isHeadPastor()) {
+            $headPastorChurchId = $this->session->getHeadPastorChurchId();
+            $belongsToChurch = false;
+            
+            if ($member['church_id'] !== null) {
+                $belongsToChurch = ((int)$member['church_id'] === (int)$headPastorChurchId);
+            } else {
+                $userUnits = $this->userModel->getUnits($id);
+                if (!empty($userUnits)) {
+                    $unitIds = array_column($userUnits, 'id');
+                    $churchModel = new \App\Models\Church();
+                    $churchIds = $churchModel->getChurchIdsByUnitIds($unitIds);
+                    if (in_array($headPastorChurchId, $churchIds)) {
+                        $belongsToChurch = true;
+                    }
+                }
+            }
+            
+            if (!$belongsToChurch) {
+                $this->session->setFlash('error', 'You do not have permission to view this member.');
+                $this->redirect('/members');
+            }
+        }
+
         // Get membership details
         $memberships = $this->membershipModel->getByUserId($id);
         $primaryMembership = !empty($memberships) ? $memberships[0] : null;
-        
+
         // Get unit information
         $units = $this->userModel->getUnits($id);
         $directorUnits = $this->userModel->getDirectorUnits($id);
-        
+
         // Get attendance history
         $attendanceHistory = $this->attendanceModel->getUserAttendance($id, 90); // Last 90 days
-        
+
         // Get engagement score and predicted needs
-        $engagementScore = $this->userModel->getEngagementScore($id);
-        $predictedNeeds = $this->userModel->getPredictedNeeds($id);
-        
+        // $engagementScore = $this->userModel->getEngagementScore($id);
+        // $predictedNeeds = $this->userModel->getPredictedNeeds($id);
+
         // Get follow-up history
         $followUpHistory = $this->userModel->getFollowUpHistory($id);
-        
+
         // Get recent activity
         $recentActivity = $this->getRecentActivity($id);
-        
+
+        // Fetch church branch details
+        $church = null;
+        if (!empty($member['church_id'])) {
+            $churchModel = new \App\Models\Church();
+            $church = $churchModel->find($member['church_id']);
+        }
+
         $this->render('members/show', [
             'title' => $member['first_name'] . ' ' . $member['last_name'] . ' - Profile',
             'pageTitle' => $member['first_name'] . ' ' . $member['last_name'],
             'member' => $member,
+            'church' => $church,
             'primaryMembership' => $primaryMembership,
             'memberships' => $memberships,
             'units' => $units,
             'directorUnits' => $directorUnits,
             'attendanceHistory' => $attendanceHistory,
-            'engagementScore' => $engagementScore,
-            'predictedNeeds' => $predictedNeeds,
+            // 'engagementScore' => $engagementScore,
+            // 'predictedNeeds' => $predictedNeeds,
             'followUpHistory' => $followUpHistory,
             'recentActivity' => $recentActivity
         ]);
+    }
+
+    /**
+     * Show edit form
+     */
+    public function edit($id) {
+        $member = $this->userModel->find($id);
+
+        if (!$member) {
+            $this->session->setFlash('error', 'Member not found.');
+            $this->redirect('/members');
+        }
+
+        // Enforce church-scoping for Head Pastors (IDOR protection)
+        if ($this->session->isHeadPastor()) {
+            $headPastorChurchId = $this->session->getHeadPastorChurchId();
+            $belongsToChurch = false;
+            
+            if ($member['church_id'] !== null) {
+                $belongsToChurch = ((int)$member['church_id'] === (int)$headPastorChurchId);
+            } else {
+                $userUnits = $this->userModel->getUnits($id);
+                if (!empty($userUnits)) {
+                    $unitIds = array_column($userUnits, 'id');
+                    $churchModel = new \App\Models\Church();
+                    $churchIds = $churchModel->getChurchIdsByUnitIds($unitIds);
+                    if (in_array($headPastorChurchId, $churchIds)) {
+                        $belongsToChurch = true;
+                    }
+                }
+            }
+            
+            if (!$belongsToChurch) {
+                $this->session->setFlash('error', 'You do not have permission to edit this member.');
+                $this->redirect('/members');
+            }
+        }
+
+        $csrfToken = Security::generateCSRFToken();
+        $roles = ['user', 'pastor', 'officer', 'director', 'admin'];
+        $membershipTypes = ['visitor', 'member', 'elder', 'deacon', 'pastor'];
+        $statuses = ['active', 'inactive', 'suspended', 'transferred'];
+
+        // Get current membership
+        $memberships = $this->membershipModel->getByUserId($id);
+        $primaryMembership = !empty($memberships) ? $memberships[0] : null;
+
+        $isHeadPastor = $this->session->isHeadPastor();
+        $churchId = $isHeadPastor ? $this->session->getHeadPastorChurchId() : null;
+        
+        // Scope units for head pastors
+        if ($isHeadPastor) {
+            $churchModel = new \App\Models\Church();
+            $units = $churchModel->getChurchUnits($churchId);
+        } else {
+            $units = $this->unitModel->getActiveUnits();
+        }
+
+        $churches = [];
+        if (!$isHeadPastor) {
+            $churchModel = new \App\Models\Church();
+            $churches = $churchModel->findAll([], 'name ASC');
+        }
+
+        $this->render('members/edit', [
+            'title' => 'Edit Member',
+            'pageTitle' => 'Edit Member: ' . $member['first_name'] . ' ' . $member['last_name'],
+            'member' => $member,
+            'primaryMembership' => $primaryMembership,
+            'csrf_token' => $csrfToken,
+            'roles' => $roles,
+            'units' => $units,
+            'membershipTypes' => $membershipTypes,
+            'statuses' => $statuses,
+            'churches' => $churches,
+            'isHeadPastor' => $isHeadPastor,
+            'breadcrumbs' => [
+                ['label' => 'Members', 'url' => '/members'],
+                ['label' => 'View Profile', 'url' => "/members/{$id}"],
+                ['label' => 'Edit', 'active' => true]
+            ]
+        ]);
+    }
+
+    /**
+     * Update member detail
+     */
+    public function update($id) {
+        // Validate CSRF
+        $token = $this->request->post('_token');
+        if (!$token || !Security::validateCSRFToken($token)) {
+            $this->session->setFlash('error', 'Invalid security token.');
+            $this->redirect("/members/{$id}/edit");
+        }
+
+        $member = $this->userModel->find($id);
+        if (!$member) {
+            $this->session->setFlash('error', 'Member not found.');
+            $this->redirect('/members');
+        }
+
+        // IDOR protection
+        if ($this->session->isHeadPastor()) {
+            $headPastorChurchId = $this->session->getHeadPastorChurchId();
+            $belongsToChurch = false;
+            
+            if ($member['church_id'] !== null) {
+                $belongsToChurch = ((int)$member['church_id'] === (int)$headPastorChurchId);
+            } else {
+                $userUnits = $this->userModel->getUnits($id);
+                if (!empty($userUnits)) {
+                    $unitIds = array_column($userUnits, 'id');
+                    $churchModel = new \App\Models\Church();
+                    $churchIds = $churchModel->getChurchIdsByUnitIds($unitIds);
+                    if (in_array($headPastorChurchId, $churchIds)) {
+                        $belongsToChurch = true;
+                    }
+                }
+            }
+            
+            if (!$belongsToChurch) {
+                $this->session->setFlash('error', 'You do not have permission to update this member.');
+                $this->redirect('/members');
+            }
+        }
+
+        // Validate input
+        $isHeadPastor = $this->session->isHeadPastor();
+        $rules = [
+            'email' => 'required|email',
+            'first_name' => 'required|min:2|max:100',
+            'last_name' => 'required|min:2|max:100',
+            'role' => 'required'
+        ];
+        
+        if (!$isHeadPastor && $this->request->post('role') !== 'admin') {
+            $rules['church_id'] = 'required';
+        }
+        
+        $validation = $this->validate($rules);
+
+        if (!$validation['valid']) {
+            $this->session->setFlash('errors', $validation['errors']);
+            $this->redirect("/members/{$id}/edit");
+        }
+
+        // Check if email already exists for another user
+        $existingUser = $this->userModel->findByEmail($this->request->post('email'));
+        if ($existingUser && $existingUser['id'] != $id) {
+            $this->session->setFlash('error', 'Email already exists.');
+            $this->redirect("/members/{$id}/edit");
+        }
+        $userData = [
+            'email' => $this->request->post('email'),
+            'first_name' => $this->request->post('first_name'),
+            'last_name' => $this->request->post('last_name'),
+            'role' => $this->request->post('role'),
+            'status' => $this->request->post('status', 'active')
+        ];
+
+        if (!$isHeadPastor) {
+            $userData['church_id'] = $this->request->post('church_id') ? (int)$this->request->post('church_id') : null;
+        }
+
+        // Update password if provided
+        $password = $this->request->post('password');
+        if (!empty($password)) {
+            $userData['password'] = Security::hashPassword($password);
+        }
+
+        if ($this->userModel->update($id, $userData)) {
+            // Update Membership association
+            $unitId = $this->request->post('unit_id');
+            if ($unitId) {
+                $memberships = $this->membershipModel->getByUserId($id);
+                $membershipData = [
+                    'unit_id' => $unitId,
+                    'membership_type' => $this->request->post('membership_type', 'member'),
+                    'join_date' => $this->request->post('join_date', date('Y-m-d'))
+                ];
+
+                if (!empty($memberships)) {
+                    $this->membershipModel->update($memberships[0]['id'], $membershipData);
+                    
+                    // Also update unit_user table safely
+                    $db = \App\Core\Database::getInstance();
+                    $oldUnitId = $memberships[0]['unit_id'];
+                    if ($oldUnitId != $unitId) {
+                        // 1. Ensure the NEW unit assignment exists
+                        $ins = $db->prepare("INSERT INTO unit_user (unit_id, user_id, role) VALUES (?, ?, 'member') ON DUPLICATE KEY UPDATE role = role");
+                        $ins->bind_param("ii", $unitId, $id);
+                        $ins->execute();
+                        
+                        // 2. Remove the OLD unit assignment (migration)
+                        $del = $db->prepare("DELETE FROM unit_user WHERE user_id = ? AND unit_id = ?");
+                        $del->bind_param("ii", $id, $oldUnitId);
+                        $del->execute();
+                    }
+                } else {
+                    $membershipData['user_id'] = $id;
+                    $membershipData['status'] = 'active';
+                    $this->membershipModel->create($membershipData);
+                    
+                    // Insert into unit_user if not already exists
+                    $db = \App\Core\Database::getInstance();
+                    $stmt = $db->prepare("INSERT INTO unit_user (unit_id, user_id, role) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE role = VALUES(role)");
+                    $role = 'member';
+                    $stmt->bind_param("iis", $unitId, $id, $role);
+                    $stmt->execute();
+                }
+            }
+
+            ActivityLog::log(
+                $this->session->get('user_id'),
+                'update',
+                'User',
+                $id,
+                "Updated member: {$userData['first_name']} {$userData['last_name']}"
+            );
+
+            $this->session->setFlash('success', 'Member updated successfully.');
+            $this->redirect("/members/{$id}");
+        } else {
+            $this->session->setFlash('error', 'Failed to update member.');
+            $this->redirect("/members/{$id}/edit");
+        }
     }
     
     /**
      * Get all members with comprehensive details
      */
-    private function getAllMembersWithDetails($filters = []) {
+    private function getAllMembersWithDetails($filters = [], $churchId = null) {
         $members = [];
         
         try {
@@ -148,15 +556,22 @@ class MemberDirectoryController extends BaseController {
                         m.tithe_status,
                         m.engagement_score,
                         m.created_at as membership_created,
-                        un.id as unit_id,
-                        un.name as unit_name
+                        GROUP_CONCAT(DISTINCT un.name SEPARATOR ', ') as unit_name,
+                        GROUP_CONCAT(DISTINCT un.id) as unit_id
                     FROM users u
                     LEFT JOIN memberships m ON u.id = m.user_id
-                    LEFT JOIN units un ON m.unit_id = un.id
-                    WHERE u.role != 'admin'"; // Exclude admin accounts from member directory
+                    LEFT JOIN units un ON m.unit_id = un.id";
+            
+            $sql .= " WHERE u.role != 'admin'"; // Exclude admin accounts from member directory
             
             $params = [];
             $types = '';
+            
+            if ($churchId) {
+                $sql .= " AND u.church_id = ?";
+                $params[] = $churchId;
+                $types .= 'i';
+            }
             
             // Apply filters
             if (!empty($filters['search'])) {
@@ -193,6 +608,8 @@ class MemberDirectoryController extends BaseController {
             if ($sortColumn === 'name') {
                 $sortColumn = 'u.first_name, u.last_name';
             }
+            
+            $sql .= " GROUP BY u.id";
             
             $sortOrder = strtolower($filters['sort_order']) === 'desc' ? 'DESC' : 'ASC';
             $sql .= " ORDER BY {$sortColumn} {$sortOrder}";
@@ -343,7 +760,11 @@ class MemberDirectoryController extends BaseController {
      */
     public function export() {
         $format = $this->request->get('format', 'csv');
-        $members = $this->getAllMembersWithDetails();
+        
+        // Get the church ID if the user is a head pastor to enforce scoping
+        $churchId = $this->session->isHeadPastor() ? $this->session->getHeadPastorChurchId() : null;
+        
+        $members = $this->getAllMembersWithDetails([], $churchId);
         
         $headers = [
             'ID', 'Name', 'Email', 'Role', 'Membership Type', 'Status', 

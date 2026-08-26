@@ -109,7 +109,7 @@ $property = $property ?? [];
                                 <?php if ($property['purchase_cost']): ?>
                                     <tr>
                                         <th scope="row">Purchase Cost:</th>
-                                        <td>$<?= number_format((float)$property['purchase_cost'], 2) ?></td>
+                                        <td>₦<?= number_format((float)$property['purchase_cost'], 2) ?></td>
                                     </tr>
                                 <?php endif; ?>
                                 <tr>

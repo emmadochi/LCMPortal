@@ -66,7 +66,7 @@
                     <?php if ($project['budget']): ?>
                     <div class="col-md-6">
                         <p class="text-muted mb-1"><strong>Budget:</strong> 
-                            $<?= number_format($project['budget'], 2) ?>
+                            ₦<?= number_format($project['budget'], 2) ?>
                         </p>
                     </div>
                     <?php endif; ?>
@@ -123,7 +123,7 @@
                             <?php if ($project['budget']): ?>
                             <tr>
                                 <th scope="row">Budget :</th>
-                                <td>$<?= number_format($project['budget'], 2) ?></td>
+                                <td>₦<?= number_format($project['budget'], 2) ?></td>
                             </tr>
                             <?php endif; ?>
                             <tr>

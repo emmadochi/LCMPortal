@@ -1,14 +1,17 @@
 # Dependencies
 /vendor/
+composer.phar
 
 # Environment
 .env
+.env.*
 
 # Uploads
 /uploads/*
 !/uploads/.gitkeep
 /public/uploads/*
 !/public/uploads/.gitkeep
+/public/public/
 
 # Storage
 /storage/logs/*
@@ -16,17 +19,30 @@
 /storage/cache/*
 !/storage/cache/.gitkeep
 
-# IDE
+# IDE & AI
 .idea/
 .vscode/
+.trae/
 *.swp
 *.swo
 *~
 
+# Temporary & Debug
+*.zip
+*.log
+debug_*.php
+check_*.php
+dump_*.php
+test_*.php
+search_*.php
+find_*.php
+tmp_*.php
+fix_*.php
+*.txt
+headpastor
+old_index.php
+index.ph
+
 # OS
 .DS_Store
 Thumbs.db
-
-# Logs
-*.log
-

@@ -6,13 +6,34 @@ class AssetHelper {
      * Resolve the base path for the app (supports subfolder installs).
      * Examples:
      *  - /index.php                 => base path: ''
+     *  - /ADMIN_PORTAL/index.php    => base path: '/ADMIN_PORTAL'
      *  - /ADMIN_PORTAL/public/index.php => base path: '/ADMIN_PORTAL/public'
      */
     protected static function basePath() {
-        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
-        $basePath   = str_replace('\\', '/', dirname($scriptName));
-        $basePath   = rtrim($basePath, '/');
-        return $basePath === '.' ? '' : $basePath;
+        if (!isset($_SERVER['SCRIPT_NAME'])) {
+            return '';
+        }
+
+        $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME']);
+        $baseDir = dirname($scriptName);
+        
+        // Normalize the base path
+        $baseDir = str_replace('\\', '/', $baseDir);
+        
+        // If the path ends in 'public', we return it as is
+        // This handles cases like /ADMIN_PORTAL/public/index.php
+        if (substr($baseDir, -7) === '/public') {
+            return rtrim($baseDir, '/');
+        }
+        
+        // If the SCRIPT_NAME itself contains /public/index.php 
+        // but dirname returned something else due to trailing slashes
+        if (strpos($scriptName, '/public/') !== false) {
+            $publicPos = strpos($scriptName, '/public/');
+            return substr($scriptName, 0, $publicPos + 7);
+        }
+
+        return ($baseDir === '/' || $baseDir === '.') ? '' : rtrim($baseDir, '/');
     }
 
     /**

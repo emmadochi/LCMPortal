@@ -13,6 +13,10 @@ class App {
     }
 
     public function run() {
+        // Boot session before anything else so $_SESSION is available
+        // for CSRF token generation and validation on every request.
+        Session::getInstance();
+
         // Load routes - pass router instance
         $router = $this->router;
         require_once __DIR__ . '/../../routes/web.php';

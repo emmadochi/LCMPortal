@@ -17,15 +17,14 @@ class ChurchController extends BaseController {
         $this->churchModel = new Church();
         $this->unitModel = new Unit();
         $this->userModel = new User();
-        
-        // Check permission - churches management requires admin role
-        $this->authorize('manage_churches');
     }
 
     /**
      * List all churches
      */
     public function index() {
+        // Only admins can list all churches
+        $this->authorize('manage_churches');
         $search = $this->request->get('search', '');
         $status = $this->request->get('status', '');
         $state = $this->request->get('state', '');
@@ -62,6 +61,8 @@ class ChurchController extends BaseController {
      * Show create church form
      */
     public function create() {
+        // Only admins can create churches
+        $this->authorize('manage_churches');
         $csrfToken = Security::generateCSRFToken();
         $statuses = $this->churchModel->getStatuses();
         $pastors = $this->userModel->getPastors();
@@ -79,6 +80,8 @@ class ChurchController extends BaseController {
      * Store new church
      */
     public function store() {
+        // Only admins can create churches
+        $this->authorize('manage_churches');
         // Validate CSRF
         $token = $this->request->post('_token');
         if (!$token || !Security::validateCSRFToken($token)) {
@@ -143,6 +146,7 @@ class ChurchController extends BaseController {
      * Church membership dashboard: stats, engagement bands, leaders, unit coordinators, filterable member list.
      */
     public function membershipDashboard($id) {
+        $this->checkChurchAccess($id);
         $church = $this->churchModel->getChurchWithUnits($id);
         if (!$church) {
             $this->session->setFlash('error', 'Church not found.');
@@ -180,6 +184,8 @@ class ChurchController extends BaseController {
      * Show church details
      */
     public function show($id) {
+        // Check if user can access this church
+        $this->checkChurchAccess($id);
         $church = $this->churchModel->getChurchWithDetails($id);
         
         if (!$church) {
@@ -191,6 +197,7 @@ class ChurchController extends BaseController {
         $units = $this->churchModel->getChurchUnits($id);
         $allUnits = $this->unitModel->getAllUnits();
         $possible_head_pastors = $this->churchModel->getPossibleHeadPastors();
+        $possible_unit_heads = $this->churchModel->getChurchMemberUsers($id);
         
         // Get units not yet assigned to this church
         $assignedUnitIds = array_column($units, 'unit_id');
@@ -209,6 +216,7 @@ class ChurchController extends BaseController {
             'units' => $units,
             'availableUnits' => $availableUnits,
             'possible_head_pastors' => $possible_head_pastors,
+            'possible_unit_heads' => $possible_unit_heads,
             'churchTargets' => $churchTargets,
             'targetTypes' => $targetTypes,
             'csrf_token' => Security::generateCSRFToken(),
@@ -220,6 +228,8 @@ class ChurchController extends BaseController {
      * Show edit form
      */
     public function edit($id) {
+        $this->authorize('manage_churches');
+        $this->checkChurchAccess($id);
         $church = $this->churchModel->find($id);
         
         if (!$church) {
@@ -245,6 +255,8 @@ class ChurchController extends BaseController {
      * Update church
      */
     public function update($id) {
+        $this->authorize('manage_churches');
+        $this->checkChurchAccess($id);
         // Validate CSRF
         $token = $this->request->post('_token');
         if (!$token || !Security::validateCSRFToken($token)) {
@@ -313,6 +325,8 @@ class ChurchController extends BaseController {
      * Delete church
      */
     public function delete($id) {
+        $this->authorize('manage_churches');
+        $this->checkChurchAccess($id);
         // Validate CSRF
         $token = $this->request->post('_token');
         if (!$token || !Security::validateCSRFToken($token)) {
@@ -342,9 +356,37 @@ class ChurchController extends BaseController {
     }
 
     /**
+     * Check if current user can access a specific church
+     * Admins can access all churches
+     * Head pastors can only access their assigned church
+     */
+    private function checkChurchAccess($churchId) {
+        $userRole = $this->session->get('user_role');
+        
+        // Admins can access any church
+        if ($userRole === 'admin') {
+            return true;
+        }
+        
+        // Head pastors can only access their assigned church
+        if ($this->session->isHeadPastor()) {
+            $headPastorChurchId = $this->session->getHeadPastorChurchId();
+            if ($headPastorChurchId == $churchId) {
+                return true;
+            }
+        }
+        
+        // If we get here, user doesn't have access
+        $this->session->setFlash('error', 'You do not have permission to access this church.');
+        $this->redirect('/unauthorized');
+        return false;
+    }
+
+    /**
      * Assign unit to church
      */
     public function assignUnit($churchId) {
+        $this->checkChurchAccess($churchId);
         // Validate CSRF
         $token = $this->request->post('_token');
         if (!$token || !Security::validateCSRFToken($token)) {
@@ -382,6 +424,7 @@ class ChurchController extends BaseController {
      * Remove unit from church
      */
     public function removeUnit($churchId) {
+        $this->checkChurchAccess($churchId);
         // Validate CSRF
         $token = $this->request->post('_token');
         if (!$token || !Security::validateCSRFToken($token)) {
@@ -457,6 +500,7 @@ class ChurchController extends BaseController {
      * Generate detailed church report
      */
     public function generateReport($id) {
+        $this->checkChurchAccess($id);
         $startDate = $this->request->get('start_date');
         $endDate = $this->request->get('end_date');
         
@@ -480,6 +524,7 @@ class ChurchController extends BaseController {
      * Assign head pastor to a church
      */
     public function assignHeadPastor($id) {
+        $this->authorize('manage_churches');
         // Validate CSRF
         $token = $this->request->post('_token');
         if (!$token || !Security::validateCSRFToken($token)) {
@@ -514,6 +559,7 @@ class ChurchController extends BaseController {
      * Remove head pastor assignment from a church
      */
     public function removeHeadPastor($id) {
+        $this->authorize('manage_churches');
         // Validate CSRF
         $token = $this->request->post('_token');
         if (!$token || !Security::validateCSRFToken($token)) {
@@ -521,10 +567,81 @@ class ChurchController extends BaseController {
             $this->redirect("/churches/{$id}");
         }
 
+        // Security check: Head Pastors should not be able to remove themselves
+        $church = $this->churchModel->getChurchWithUnits($id);
+        if ($church && $this->session->get('user_id') == $church['head_pastor_user_id']) {
+            $this->session->setFlash('error', 'You cannot remove yourself as the head pastor. Please contact an Administrator if you need to be reassigned.');
+            $this->redirect("/churches/{$id}");
+        }
+
         if ($this->churchModel->removeHeadPastor($id)) {
             $this->session->setFlash('success', 'Head pastor assignment removed successfully.');
         } else {
             $this->session->setFlash('error', 'Failed to remove head pastor assignment.');
+        }
+
+        $this->redirect("/churches/{$id}");
+    }
+
+    /**
+     * Assign unit head for a unit within a church
+     */
+    public function assignUnitHead($id) {
+        $this->checkChurchAccess($id);
+        // Validate CSRF
+        $token = $this->request->post('_token');
+        if (!$token || !Security::validateCSRFToken($token)) {
+            $this->session->setFlash('error', 'Invalid security token.');
+            $this->redirect("/churches/{$id}");
+        }
+
+        $unitId = $this->request->post('unit_id');
+        $userId = $this->request->post('user_id');
+
+        if (!$unitId || !$userId) {
+            $this->session->setFlash('error', 'Please select both a unit and a user.');
+            $this->redirect("/churches/{$id}");
+        }
+
+        // Verify user is a member of this church
+        $user = $this->userModel->find($userId);
+        if (!$user || (int)$user['church_id'] !== (int)$id || $user['status'] !== 'active') {
+            $this->session->setFlash('error', 'The selected user is not an active member of this church.');
+            $this->redirect("/churches/{$id}");
+        }
+
+        if ($this->churchModel->assignUnitHead($id, $unitId, $userId)) {
+            $this->session->setFlash('success', 'Unit head appointed successfully.');
+        } else {
+            $this->session->setFlash('error', 'Failed to appoint unit head.');
+        }
+
+        $this->redirect("/churches/{$id}");
+    }
+
+    /**
+     * Remove unit head for a unit within a church
+     */
+    public function removeUnitHead($id) {
+        $this->checkChurchAccess($id);
+        // Validate CSRF
+        $token = $this->request->post('_token');
+        if (!$token || !Security::validateCSRFToken($token)) {
+            $this->session->setFlash('error', 'Invalid security token.');
+            $this->redirect("/churches/{$id}");
+        }
+
+        $unitId = $this->request->post('unit_id');
+
+        if (!$unitId) {
+            $this->session->setFlash('error', 'Unit selection is required.');
+            $this->redirect("/churches/{$id}");
+        }
+
+        if ($this->churchModel->removeUnitHead($id, $unitId)) {
+            $this->session->setFlash('success', 'Unit head removed successfully.');
+        } else {
+            $this->session->setFlash('error', 'Failed to remove unit head.');
         }
 
         $this->redirect("/churches/{$id}");

@@ -97,6 +97,12 @@ class UserController extends BaseController {
         $units = $this->userModel->getUnits($id);
         $directorUnits = $this->userModel->getDirectorUnits($id);
         
+        // Fetch church branch
+        $church = null;
+        if (!empty($user['church_id'])) {
+            $church = $this->churchModel->find($user['church_id']);
+        }
+        
         // Get all units for assignment
         $allUnits = $this->unitModel->getActiveUnits();
         
@@ -123,6 +129,7 @@ class UserController extends BaseController {
             'title' => $user['first_name'] . ' ' . $user['last_name'],
             'pageTitle' => $user['first_name'] . ' ' . $user['last_name'],
             'user' => $user,
+            'church' => $church,
             'units' => $units,
             'directorUnits' => $directorUnits,
             'allUnits' => $allUnits,
@@ -225,6 +232,7 @@ class UserController extends BaseController {
         $csrfToken = Security::generateCSRFToken();
         $roles = ['admin', 'director', 'officer', 'pastor', 'user'];
         $ageGroups = \App\Models\User::getAgeGroups();
+        $churches = $this->churchModel->findAll([], 'name ASC');
         
         $this->render('users/create', [
             'title' => 'Create User',
@@ -232,6 +240,7 @@ class UserController extends BaseController {
             'csrf_token' => $csrfToken,
             'roles' => $roles,
             'ageGroups' => $ageGroups,
+            'churches' => $churches,
             'breadcrumbs' => [
                 ['label' => 'Users', 'url' => '/users'],
                 ['label' => 'Create', 'active' => true]
@@ -251,13 +260,19 @@ class UserController extends BaseController {
         }
 
         // Validate input
-        $validation = $this->validate([
+        $rules = [
             'email' => 'required|email',
             'password' => 'required|min:6',
             'first_name' => 'required|min:2|max:100',
             'last_name' => 'required|min:2|max:100',
             'role' => 'required'
-        ]);
+        ];
+        
+        if ($this->request->post('role') !== 'admin') {
+            $rules['church_id'] = 'required';
+        }
+        
+        $validation = $this->validate($rules);
 
         if (!$validation['valid']) {
             $this->session->setFlash('errors', $validation['errors']);
@@ -278,7 +293,8 @@ class UserController extends BaseController {
             'last_name' => $this->request->post('last_name'),
             'age_group' => $this->request->post('age_group') ?: null,
             'role' => $this->request->post('role'),
-            'status' => $this->request->post('status', 'active')
+            'status' => $this->request->post('status', 'active'),
+            'church_id' => $this->request->post('church_id') ? (int)$this->request->post('church_id') : null
         ];
 
         $id = $this->userModel->createUser($data);
@@ -314,6 +330,7 @@ class UserController extends BaseController {
         $csrfToken = Security::generateCSRFToken();
         $roles = ['admin', 'director', 'officer', 'pastor', 'user'];
         $ageGroups = \App\Models\User::getAgeGroups();
+        $churches = $this->churchModel->findAll([], 'name ASC');
         
         $this->render('users/edit', [
             'title' => 'Edit User',
@@ -322,6 +339,7 @@ class UserController extends BaseController {
             'csrf_token' => $csrfToken,
             'roles' => $roles,
             'ageGroups' => $ageGroups,
+            'churches' => $churches,
             'breadcrumbs' => [
                 ['label' => 'Users', 'url' => '/users'],
                 ['label' => $user['first_name'] . ' ' . $user['last_name'], 'url' => '/users/' . $id],
@@ -342,13 +360,19 @@ class UserController extends BaseController {
         }
 
         // Validate input
-        $validation = $this->validate([
+        $rules = [
             'email' => 'required|email',
             'first_name' => 'required|min:2|max:100',
             'last_name' => 'required|min:2|max:100',
             'role' => 'required',
             'status' => 'required'
-        ]);
+        ];
+        
+        if ($this->request->post('role') !== 'admin') {
+            $rules['church_id'] = 'required';
+        }
+        
+        $validation = $this->validate($rules);
 
         if (!$validation['valid']) {
             $this->session->setFlash('errors', $validation['errors']);
@@ -372,7 +396,8 @@ class UserController extends BaseController {
             'last_name' => $this->request->post('last_name'),
             'age_group' => $this->request->post('age_group') ?: null,
             'role' => $this->request->post('role'),
-            'status' => $this->request->post('status')
+            'status' => $this->request->post('status'),
+            'church_id' => $this->request->post('church_id') ? (int)$this->request->post('church_id') : null
         ];
 
         // Update password only if provided

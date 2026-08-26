@@ -7,11 +7,12 @@ use App\Utilities\AssetHelper;
     <meta charset="utf-8" />
     <title><?= isset($title) ? htmlspecialchars($title) . ' | Church Admin Portal' : 'Church Admin Portal' ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?= \App\Utilities\Security::generateCSRFToken() ?>">
     <meta content="Church Admin Portal" name="description" />
     <meta content="Church Admin" name="author" />
     
     <!-- App favicon -->
-    <link rel="shortcut icon" href="<?= AssetHelper::image('favicon.ico') ?>"
+    <link rel="shortcut icon" href="<?= AssetHelper::image('favicon.ico') ?>">
     
     <!-- preloader css -->
     <link rel="stylesheet" href="<?= AssetHelper::css('preloader.min.css') ?>" type="text/css" />
@@ -22,6 +23,9 @@ use App\Utilities\AssetHelper;
     <link href="<?= AssetHelper::css('icons.min.css') ?>" rel="stylesheet" type="text/css" />
     <!-- App Css-->
     <link href="<?= AssetHelper::css('app.min.css') ?>" id="app-style" rel="stylesheet" type="text/css" />
+    <!-- Custom Admin Css -->
+    <link href="<?= AssetHelper::css('admin-custom.css') ?>" rel="stylesheet" type="text/css" />
+    <link href="<?= AssetHelper::css('premium-theme.css') ?>" rel="stylesheet" type="text/css" />
     
     <!-- DataTables -->
     <link href="<?= AssetHelper::lib('datatables.net-bs4/css/dataTables.bootstrap4.min.css') ?>" rel="stylesheet" type="text/css" />
@@ -127,205 +131,184 @@ use App\Utilities\AssetHelper;
                         </a>
                     </li>
 
-                    <?php if ($this->session->hasPermission('manage_users')): ?>
-                    <li>
-                        <a href="javascript: void(0);" class="has-arrow waves-effect">
-                            <i class="bx bx-user"></i>
-                            <span key="t-users">Users</span>
-                        </a>
-                        <ul class="sub-menu" aria-expanded="false">
-                            <li><a href="<?= AssetHelper::url('users') ?>" key="t-user-list">User List</a></li>
-                            <li><a href="<?= AssetHelper::url('users/create') ?>" key="t-add-user">Add User</a></li>
-                        </ul>
-                    </li>
+
+
+                    <!-- Operations & Engagement -->
+                    <?php if ($this->session->hasPermission('view_dashboard') || $this->session->isHeadPastor()): ?>
+                    <li class="menu-title" key="t-operations">Operations</li>
                     
-                    <li>
-                        <a href="<?= AssetHelper::url('admin/password-reset-requests') ?>" class="<?= (strpos($_SERVER['REQUEST_URI'], '/admin/password-reset-requests') !== false) ? 'active' : '' ?>">
-                            <i class="bx bx-key"></i>
-                            <span key="t-password-requests">Password Requests</span>
-                        </a>
-                    </li>
-                    
-                    <li class="menu-title" key="t-apps">Apps</li>
-                    <?php endif; ?>
-
-                    <!-- Units Management -->
-                    <?php if ($this->session->hasPermission('manage_units') || $this->session->hasPermission('view_unit_reports')): ?>
-                    <li>
-                        <a href="javascript: void(0);" class="has-arrow waves-effect">
-                            <i class="bx bx-building"></i>
-                            <span key="t-units">Units</span>
-                        </a>
-                        <ul class="sub-menu" aria-expanded="false">
-                            <li><a href="<?= AssetHelper::url('units') ?>" key="t-unit-list">Unit List</a></li>
-                            <li><a href="<?= AssetHelper::url('units/create') ?>" key="t-add-unit">Add Unit</a></li>
-                        </ul>
-                    </li>
-                    <?php endif; ?>
-
-                    <!-- Members Management -->
-                    <?php if ($this->session->hasPermission('manage_users') || $this->session->hasPermission('view_unit_reports')): ?>
-                    <li>
-                        <a href="javascript: void(0);" class="has-arrow waves-effect">
-                            <i class="bx bx-group"></i>
-                            <span key="t-members">Members</span>
-                        </a>
-                        <ul class="sub-menu" aria-expanded="false">
-                            <li><a href="<?= AssetHelper::url('members') ?>" key="t-member-list">Member List</a></li>
-                        </ul>
-                    </li>
-                    <?php endif; ?>
-
-                    <!-- Reports Management -->
-                    <?php if ($this->session->hasPermission('manage_reports') || $this->session->hasPermission('view_all_reports') || $this->session->hasPermission('create_reports')): ?>
-                    <li>
-                        <a href="javascript: void(0);" class="has-arrow waves-effect">
-                            <i class="bx bx-file"></i>
-                            <span key="t-reports">Reports</span>
-                        </a>
-                        <ul class="sub-menu" aria-expanded="false">
-                            <li><a href="<?= AssetHelper::url('reports') ?>" key="t-report-list">Report List</a></li>
-                            <li><a href="<?= AssetHelper::url('reports/create') ?>" key="t-add-report">Create Report</a></li>
-                        </ul>
-                    </li>
-                    <?php endif; ?>
-
-                    <!-- Attendance Management -->
-                    <?php if ($this->session->hasPermission('manage_reports') || $this->session->hasPermission('view_unit_reports')): ?>
                     <li>
                         <a href="javascript: void(0);" class="has-arrow waves-effect">
                             <i class="bx bx-calendar-check"></i>
                             <span key="t-attendance">Attendance</span>
                         </a>
                         <ul class="sub-menu" aria-expanded="false">
-                            <li><a href="<?= AssetHelper::url('attendance') ?>" key="t-attendance-list">Attendance List</a></li>
-                            <li><a href="<?= AssetHelper::url('attendance/create') ?>" key="t-record-attendance">Record Attendance</a></li>
+                            <?php if ($this->session->isHeadPastor()): ?>
+                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/attendance') ?>" key="t-hp-attendance-list">Dashboard</a></li>
+                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/attendance/records') ?>" key="t-hp-attendance-records">Records</a></li>
+                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/attendance/mark') ?>" key="t-hp-record-attendance">Mark Attendance</a></li>
+                            <?php else: ?>
+                            <li><a href="<?= AssetHelper::url('attendance/create') ?>" key="t-mark-attendance">Mark Attendance</a></li>
+                            <?php endif; ?>
                         </ul>
                     </li>
-                    <?php endif; ?>
 
-                    <!-- Finance Management -->
-                    <?php if ($this->session->hasPermission('manage_finance') || $this->session->hasPermission('manage_unit_finance')): ?>
-                    <li>
-                        <a href="javascript: void(0);" class="has-arrow waves-effect">
-                            <i class="bx bx-money"></i>
-                            <span key="t-finance">Finance</span>
-                        </a>
-                        <ul class="sub-menu" aria-expanded="false">
-                            <li><a href="<?= AssetHelper::url('finance') ?>" key="t-finance-list">Finance Records</a></li>
-                            <li><a href="<?= AssetHelper::url('finance/create') ?>" key="t-add-transaction">Add Transaction</a></li>
-                        </ul>
-                    </li>
-                    <?php endif; ?>
-
-                    <!-- Media Management -->
-                    <?php if ($this->session->hasPermission('manage_media') || $this->session->hasPermission('manage_unit_media')): ?>
-                    <li>
-                        <a href="javascript: void(0);" class="has-arrow waves-effect">
-                            <i class="bx bx-image"></i>
-                            <span key="t-media">Media</span>
-                        </a>
-                        <ul class="sub-menu" aria-expanded="false">
-                            <li><a href="<?= AssetHelper::url('media') ?>" key="t-media-library">Media Library</a></li>
-                            <li><a href="<?= AssetHelper::url('media/create') ?>" key="t-upload-media">Upload Media</a></li>
-                        </ul>
-                    </li>
-                    <?php endif; ?>
-
-                    <!-- Projects Management -->
-                    <?php if ($this->session->hasPermission('manage_projects') || $this->session->hasPermission('manage_unit_projects')): ?>
-                    <li>
-                        <a href="javascript: void(0);" class="has-arrow waves-effect">
-                            <i class="bx bx-briefcase"></i>
-                            <span key="t-projects">Projects</span>
-                        </a>
-                        <ul class="sub-menu" aria-expanded="false">
-                            <li><a href="<?= AssetHelper::url('projects') ?>" key="t-project-list">Project List</a></li>
-                            <li><a href="<?= AssetHelper::url('projects/create') ?>" key="t-add-project">Add Project</a></li>
-                        </ul>
-                    </li>
-                    <?php endif; ?>
-
-                    <!-- Follow-ups Management -->
-                    <?php if ($this->session->hasPermission('view_dashboard')): ?>
                     <li>
                         <a href="javascript: void(0);" class="has-arrow waves-effect">
                             <i class="bx bx-clipboard"></i>
-                            <span key="t-follow-ups">Follow-ups</span>
+                            <span key="t-follow-ups">Follow-ups & Care</span>
                         </a>
                         <ul class="sub-menu" aria-expanded="false">
-                            <li><a href="<?= AssetHelper::url('follow-ups') ?>" key="t-follow-up-list">Follow-up List</a></li>
-                            <li><a href="<?= AssetHelper::url('follow-ups/create') ?>" key="t-add-follow-up">Create Follow-up</a></li>
+                            <li><a href="<?= AssetHelper::url('follow-ups') ?>" key="t-follow-up-list">Pending Follow-ups</a></li>
+                            <li><a href="<?= AssetHelper::url('follow-ups/create') ?>" key="t-add-follow-up">Create New</a></li>
                         </ul>
                     </li>
-                    <?php endif; ?>
 
-                    <!-- Church Management (Admin only) -->
-                    <?php if ($this->session->hasPermission('manage_users')): ?>
-                    <li>
-                        <a href="javascript: void(0);" class="has-arrow waves-effect">
-                            <i class="bx bx-church"></i>
-                            <span key="t-churches">Churches</span>
-                        </a>
-                        <ul class="sub-menu" aria-expanded="false">
-                            <li><a href="<?= AssetHelper::url('churches') ?>" key="t-church-list">Church List</a></li>
-                            <li><a href="<?= AssetHelper::url('churches/create') ?>" key="t-add-church">Add Church</a></li>
-                        </ul>
-                    </li>
-                    <?php endif; ?>
-
-                    <!-- Activity Logs (Admin only) -->
-                    <?php if ($this->session->hasPermission('manage_users')): ?>
-                    <li>
-                        <a href="<?= AssetHelper::url('activity-logs') ?>">
-                            <i class="bx bx-history"></i>
-                            <span key="t-activity-logs">Activity Logs</span>
-                        </a>
-                    </li>
-                    <?php endif; ?>
-
-                    <!-- Notifications -->
                     <?php if ($this->session->get('can_send_notifications', false) || $this->session->hasPermission('send_broadcast_notifications')): ?>
                     <li>
                         <a href="javascript: void(0);" class="has-arrow waves-effect">
                             <i class="bx bx-bell"></i>
-                            <span key="t-notifications">Notifications</span>
+                            <span key="t-communications">Communications</span>
                         </a>
                         <ul class="sub-menu" aria-expanded="false">
-                            <li><a href="<?= AssetHelper::url('notifications') ?>" key="t-notification-list">Notification List</a></li>
-                            <li><a href="<?= AssetHelper::url('notifications/create') ?>" key="t-send-notification">Send Notification</a></li>
+                            <li><a href="<?= AssetHelper::url('notifications/' . $this->session->get('church_id')) ?>" key="t-notification-history">History</a></li>
+                            <li><a href="<?= AssetHelper::url('notifications/' . $this->session->get('church_id') . '/create') ?>" key="t-send-notification">Send Broadcast</a></li>
                         </ul>
                     </li>
                     <?php endif; ?>
+                    <?php endif; ?>
 
-                    <!-- Property Management -->
+                    <!-- Administration & Management -->
+                    <?php if ($this->session->hasPermission('manage_users') || $this->session->isHeadPastor() || $this->session->isDirector()): ?>
+                    <li class="menu-title" key="t-administration">Administration</li>
+
                     <?php if ($this->session->hasPermission('manage_users')): ?>
                     <li>
                         <a href="javascript: void(0);" class="has-arrow waves-effect">
-                            <i class="bx bx-home-alt"></i>
-                            <span key="t-property">Property</span>
+                            <i class="bx bx-user-shield"></i>
+                            <span key="t-people-security">People & Security</span>
                         </a>
                         <ul class="sub-menu" aria-expanded="false">
-                            <li><a href="<?= AssetHelper::url('properties') ?>" key="t-property-list">Property List</a></li>
-                            <li><a href="<?= AssetHelper::url('properties/create') ?>" key="t-add-property">Add Property</a></li>
-                            <li><a href="<?= AssetHelper::url('property-categories') ?>" key="t-property-categories">Categories</a></li>
+                            <li><a href="<?= AssetHelper::url('members') ?>" key="t-member-dir">Member Directory</a></li>
+                            <li><a href="<?= AssetHelper::url('users') ?>" key="t-sys-users">System Users</a></li>
+                            <li><a href="<?= AssetHelper::url('admin/password-reset-requests') ?>" key="t-pw-resets">Password Requests</a></li>
+                            <li><a href="<?= AssetHelper::url('activity-logs') ?>" key="t-activity">Activity Logs</a></li>
                         </ul>
                     </li>
                     <?php endif; ?>
 
-                    <!-- Outreach Reports -->
-                    <?php if ($this->session->hasPermission('manage_reports') || $this->session->hasPermission('view_all_reports')): ?>
                     <li>
                         <a href="javascript: void(0);" class="has-arrow waves-effect">
-                            <i class="bx bx-world"></i>
-                            <span key="t-outreach-reports">Outreach Reports</span>
+                            <i class="bx bx-buildings"></i>
+                            <span key="t-churches-units">Churches & Units</span>
                         </a>
                         <ul class="sub-menu" aria-expanded="false">
-                            <li><a href="<?= AssetHelper::url('outreach-reports') ?>" key="t-outreach-list">Reports List</a></li>
-                            <li><a href="<?= AssetHelper::url('outreach-reports/create') ?>" key="t-add-outreach">Create Report</a></li>
+                            <?php if ($this->session->hasPermission('manage_users')): ?>
+                            <li><a href="<?= AssetHelper::url('churches') ?>" key="t-church-ctrl">Churches Control</a></li>
+                            <li><a href="<?= AssetHelper::url('units') ?>" key="t-manage-units">Manage Units</a></li>
+                            <?php endif; ?>
+                            <?php if ($this->session->isHeadPastor()): ?>
+                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '#units-section') ?>" key="t-unit-mgmt">Unit Management</a></li>
+                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/performance') ?>" key="t-perf-matrix">Performance Matrix</a></li>
+                            <?php endif; ?>
+                            <?php if ($this->session->isDirector()): ?>
+                            <?php foreach ($this->session->getDirectorUnits() as $unit): ?>
+                            <li><a href="<?= AssetHelper::url('units/' . $unit['id']) ?>"><?= htmlspecialchars($unit['name']) ?></a></li>
+                            <?php endforeach; ?>
+                            <?php endif; ?>
+                        </ul>
+                    </li>
+
+                    <?php if ($this->session->hasPermission('manage_users') || $this->session->isHeadPastor()): ?>
+                    <li>
+                        <a href="javascript: void(0);" class="has-arrow waves-effect">
+                            <i class="bx bx-money"></i>
+                            <span key="t-finance-assets">Finances & Budgets</span>
+                        </a>
+                        <ul class="sub-menu" aria-expanded="false">
+                            <?php if ($this->session->isHeadPastor()): ?>
+                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/finance') ?>" key="t-fin-dash">Financial Dashboard</a></li>
+                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/budgets') ?>" key="t-hp-budgets">Budget Management</a></li>
+                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/pledges') ?>" key="t-hp-pledges">Pledges & Campaigns</a></li>
+                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/finance/cashflow') ?>" key="t-hp-cashflow">Cashflow & Trends</a></li>
+                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/finance/audit-trail') ?>" key="t-hp-audit">Audit Trail</a></li>
+                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/property') ?>" key="t-prop-dash">Property Dashboard</a></li>
+                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/projects') ?>" key="t-proj-dash">Projects Dashboard</a></li>
+                            <?php endif; ?>
+                            <?php if ($this->session->hasPermission('manage_users')): ?>
+                            <li><a href="<?= AssetHelper::url('finance') ?>" key="t-admin-fin-dash">Financial Dashboard</a></li>
+                            <li><a href="<?= AssetHelper::url('budgets') ?>" key="t-admin-budgets">Budget Management</a></li>
+                            <li><a href="<?= AssetHelper::url('pledges') ?>" key="t-admin-pledges">Pledges & Campaigns</a></li>
+                            <li><a href="<?= AssetHelper::url('finance/cashflow') ?>" key="t-admin-cashflow">Cashflow & Trends</a></li>
+                            <li><a href="<?= AssetHelper::url('finance/audit-trail') ?>" key="t-admin-audit">Audit Trail</a></li>
+                            <li><a href="<?= AssetHelper::url('admin/finance-report') ?>" key="t-admin-finance">Global Financial Report</a></li>
+                            <li><a href="<?= AssetHelper::url('properties') ?>" key="t-global-prop">Global Properties</a></li>
+                            <li><a href="<?= AssetHelper::url('property-categories') ?>" key="t-prop-cats">Property Categories</a></li>
+                            <?php endif; ?>
                         </ul>
                     </li>
                     <?php endif; ?>
+
+                    <?php if ($this->session->hasPermission('manage_users') || $this->session->isHeadPastor() || $this->session->hasPermission('manage_reports')): ?>
+                    <li>
+                        <a href="javascript: void(0);" class="has-arrow waves-effect">
+                            <i class="bx bx-bar-chart-square"></i>
+                            <span key="t-reports-analytics">Reports & Analytics</span>
+                        </a>
+                        <ul class="sub-menu" aria-expanded="false">
+                            <?php if ($this->session->isHeadPastor()): ?>
+                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/unit-reports') ?>" key="t-unit-rep">Unit Narrative Reports</a></li>
+                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/outreach') ?>" key="t-outreach-rep">Outreach Reports</a></li>
+                            <?php else: ?>
+                            <li><a href="<?= AssetHelper::url('reports/' . $this->session->get('church_id')) ?>" key="t-gen-rep">General Reports</a></li>
+                            <li><a href="<?= AssetHelper::url('outreach-reports') ?>" key="t-outreach-rep">Outreach Reports</a></li>
+                            <?php endif; ?>
+                            <?php if ($this->session->hasPermission('manage_users')): ?>
+                            <li><a href="<?= AssetHelper::url('admin/attendance-overview') ?>" key="t-admin-att">Global Attendance Overview</a></li>
+                            <?php endif; ?>
+                        </ul>
+                    </li>
+                    <?php endif; ?>
+
+                    <?php endif; ?>
+
+                    <!-- Personal Space -->
+                    <li class="menu-title" key="t-personal-space">Personal Space</li>
+
+                    <li>
+                        <a href="<?= AssetHelper::url('profile') ?>" class="<?= (strpos($_SERVER['REQUEST_URI'], '/profile') !== false) ? 'active' : '' ?> waves-effect">
+                            <i class="bx bx-user-circle"></i>
+                            <span key="t-member-profile">My Profile</span>
+                        </a>
+                    </li>
+                    <?php if ($this->session->get('user_role') === 'user' || $this->session->hasPermission('view_dashboard')): ?>
+                    <li>
+                        <a href="<?= AssetHelper::url('attendance/my-history') ?>" class="<?= (strpos($_SERVER['REQUEST_URI'], '/attendance/my-history') !== false) ? 'active' : '' ?> waves-effect">
+                            <i class="bx bx-calendar-check"></i>
+                            <span key="t-my-attendance">My Attendance</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?= AssetHelper::url('giving/my-records') ?>" class="<?= (strpos($_SERVER['REQUEST_URI'], '/giving/my-records') !== false) ? 'active' : '' ?> waves-effect">
+                            <i class="bx bx-money"></i>
+                            <span key="t-my-giving">My Giving</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?= AssetHelper::url('giving/my-pledges') ?>" class="<?= (strpos($_SERVER['REQUEST_URI'], '/giving/my-pledges') !== false) ? 'active' : '' ?> waves-effect">
+                            <i class="bx bx-gift"></i>
+                            <span key="t-my-pledges">My Pledges</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?= AssetHelper::url('my-units') ?>" class="<?= (strpos($_SERVER['REQUEST_URI'], '/my-units') !== false) ? 'active' : '' ?> waves-effect">
+                            <i class="bx bx-group"></i>
+                            <span key="t-my-departments">My Departments</span>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+
+
                 </ul>
             </div>
             <!-- Sidebar -->
@@ -340,6 +323,31 @@ use App\Utilities\AssetHelper;
         <div class="page-content">
             <div class="container-fluid">
                 <!-- Content -->
+                <?php if ($this->session->hasFlash('success')): ?>
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <?= $this->session->getFlash('success') ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($this->session->hasFlash('error')): ?>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <?= $this->session->getFlash('error') ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($this->session->hasFlash('errors')): ?>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <ul class="mb-0">
+                            <?php foreach ($this->session->getFlash('errors') as $error): ?>
+                                <li><?= $error ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <?php endif; ?>
+
                 <?= $content ?? '' ?>
             </div>
         </div>
@@ -395,6 +403,15 @@ use App\Utilities\AssetHelper;
 <script src="<?= AssetHelper::js('app.js') ?>"></script>
 
 <script>
+// Setup jQuery AJAX to automatically include CSRF token in header
+if (typeof jQuery !== 'undefined') {
+    jQuery.ajaxSetup({
+        headers: {
+            'X-CSRF-TOKEN': jQuery('meta[name="csrf-token"]').attr('content')
+        }
+    });
+}
+
 // Initialize tooltips
 document.addEventListener('DOMContentLoaded', function() {
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -403,6 +420,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+<?= $pageJs ?? '' ?>
 
 </body>
 </html>

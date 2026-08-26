@@ -2,73 +2,70 @@
 namespace App\Middleware;
 
 use App\Core\Request;
-use App\Core\Response;
+use App\Core\Session;
 use App\Models\Church;
-use App\Models\User;
 
 class HeadPastorMiddleware {
-    private $request;
-    private $response;
-    private $churchModel;
-    private $userModel;
-
-    public function __construct(Request $request, Response $response) {
-        $this->request = $request;
-        $this->response = $response;
-        $this->churchModel = new Church();
-        $this->userModel = new User();
-    }
-
-    public function handle() {
-        $user = $_SESSION['user'] ?? null;
+    public function handle($next) {
+        $session = Session::getInstance();
+        $request = new Request();
+        $churchModel = new Church();
         
-        if (!$user) {
-            $this->response->redirect('/login');
-            return false;
+        // Get user from session
+        $userId = $session->get('user_id');
+        $userRole = $session->get('user_role');
+        
+        if (!$userId) {
+            $base = $request->basePath();
+            header('Location: ' . $base . '/login');
+            exit;
         }
 
-        // Check if user is admin (they can access everything)
-        if ($user['role'] === 'admin') {
-            return true;
+        // Admin has access to everything
+        if ($userRole === 'admin') {
+            return $next();
         }
 
         // Check if user is a head pastor
-        $isHeadPastor = $this->churchModel->isHeadPastorOfAnyChurch($user['id']);
-        
-        if ($isHeadPastor) {
-            // Get the church the user is head pastor of
-            $church = $this->churchModel->getChurchByHeadPastor($user['id']);
-            
-            // For routes that involve a specific church ID, verify the user is head pastor of that church
-            $routeParams = $this->request->getRouteParams();
-            
-            // Check if this is a church-related route that requires head pastor access to the specific church
-            $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-            
-            // Extract church ID from URL if present
-            $churchId = null;
-            if (preg_match('/\/churches\/(\d+)/', $path, $matches)) {
-                $churchId = (int)$matches[1];
-            }
-            
-            // If accessing a specific church, verify the user is head pastor of that church
-            if ($churchId && $church) {
-                if ($church['id'] != $churchId) {
-                    // User is head pastor of a different church
-                    $this->response->redirect('/unauthorized');
-                    return false;
-                }
-            }
-            
-            return true;
+        if (!$session->isHeadPastor()) {
+            $base = $request->basePath();
+            header('Location: ' . $base . '/unauthorized');
+            exit;
         }
         
-        // Check if user has other roles that grant access
-        if ($user['role'] === 'director' || $user['role'] === 'member') {
-            return true;
+        // Get the church ID from URL if present (for church-scoped routes)
+        $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        $churchIdFromUrl = null;
+        
+        // Patterns that represent church-scoped resources
+        $patterns = [
+            '#/churches/(\d+)#',
+            '#/reports/(\d+)#',
+            '#/finance/(\d+)#',
+            '#/media/(\d+)#',
+            '#/projects/(\d+)#',
+            '#/notifications/(\d+)#'
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $path, $matches)) {
+                $churchIdFromUrl = (int)$matches[1];
+                break;
+            }
         }
         
-        $this->response->redirect('/unauthorized');
-        return false;
+        // If URL has church ID, verify it matches the head pastor's assigned church
+        if ($churchIdFromUrl !== null) {
+            $headPastorChurchId = $session->getHeadPastorChurchId();
+            
+            if ($churchIdFromUrl !== $headPastorChurchId) {
+                error_log("HeadPastorMiddleware: Access denied - User {$userId} trying to access church {$churchIdFromUrl}, assigned to {$headPastorChurchId}");
+                $base = $request->basePath();
+                header('Location: ' . $base . '/unauthorized');
+                exit;
+            }
+        }
+        
+        return $next();
     }
 }

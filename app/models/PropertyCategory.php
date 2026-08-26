@@ -6,6 +6,13 @@ class PropertyCategory extends BaseModel {
     protected $fillable = ['name', 'description', 'created_by'];
 
     /**
+     * Get all categories
+     */
+    public function getAll() {
+        return $this->findAll([], "name ASC");
+    }
+
+    /**
      * Get all categories with property counts
      */
     public function getAllWithCounts() {

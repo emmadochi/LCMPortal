@@ -486,4 +486,57 @@ class Attendance extends BaseModel {
             return [];
         }
     }
+
+    /**
+     * Get recent attendance records for multiple unit IDs
+     */
+    public function getRecentAttendanceByUnitIds(array $unitIds, $limit = 10) {
+        if (empty($unitIds)) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($unitIds), '?'));
+        $sql = "SELECT a.*, u.name as unit_name,
+                CASE a.event_type
+                    WHEN 'sunday_service' THEN 'Sunday Service'
+                    WHEN 'mid_week_service' THEN 'Mid Week Service'
+                    WHEN 'workers_meeting' THEN 'Workers Meeting'
+                    WHEN 'special_service' THEN 'Special Service'
+                    WHEN 'prayer_meeting' THEN 'Prayer Meeting'
+                    WHEN 'outreach' THEN 'Outreach'
+                    WHEN 'training' THEN 'Training'
+                    ELSE a.event_type
+                END as event_type_label
+                FROM attendance a
+                LEFT JOIN units u ON a.unit_id = u.id
+                WHERE a.unit_id IN ({$placeholders})
+                ORDER BY a.event_date DESC, a.created_at DESC
+                LIMIT {$limit}";
+        $stmt = $this->db->prepare($sql);
+        $types = str_repeat('i', count($unitIds));
+        $stmt->bind_param($types, ...$unitIds);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get attendance summary per unit for a specific church
+     */
+    public function getAttendanceSummaryByUnit(int $churchId) {
+        $sql = "SELECT 
+                    u.id as unit_id,
+                    u.name as unit_name,
+                    SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) as total_present,
+                    SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) as total_absent,
+                    COUNT(DISTINCT a.event_date, a.event_type) as services_counted
+                FROM units u
+                JOIN church_units cu ON u.id = cu.unit_id AND cu.church_id = ?
+                LEFT JOIN attendance a ON u.id = a.unit_id
+                GROUP BY u.id, u.name
+                ORDER BY unit_name ASC";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("i", $churchId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
 }

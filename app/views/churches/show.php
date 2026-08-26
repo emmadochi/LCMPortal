@@ -28,9 +28,11 @@ use App\Utilities\Security;
                         <a href="<?= AssetHelper::url("churches/{$church['id']}/report") ?>" class="btn btn-info me-2">
                             <i class="bx bx-file me-1"></i>Generate Report
                         </a>
-                        <a href="<?= AssetHelper::url("churches/{$church['id']}/edit") ?>" class="btn btn-warning me-2">
-                            <i class="bx bx-edit me-1"></i>Edit Church
-                        </a>
+                        <?php if ($is_admin): ?>
+                            <a href="<?= AssetHelper::url("churches/{$church['id']}/edit") ?>" class="btn btn-warning me-2">
+                                <i class="bx bx-edit me-1"></i>Edit Church
+                            </a>
+                        <?php endif; ?>
                         <a href="<?= AssetHelper::url('churches') ?>" class="btn btn-secondary">
                             <i class="bx bx-arrow-back me-1"></i>Back to Churches
                         </a>
@@ -52,10 +54,12 @@ use App\Utilities\Security;
                             <?php endif; ?>
                             <?php if ($church['head_pastor_name']): ?>
                                 <p><strong>Head Pastor:</strong> <span class="badge bg-info"><?= htmlspecialchars($church['head_pastor_name']) ?></span>
+                                <?php if ($is_admin): ?>
                                 <form method="POST" action="<?= AssetHelper::url("churches/{$church['id']}/remove-head-pastor") ?>" style="display:inline;" onsubmit="return confirm('Are you sure you want to remove this head pastor assignment?');">
                                     <input type="hidden" name="_token" value="<?= $csrf_token; ?>">
                                     <button type="submit" class="btn btn-sm btn-outline-danger ms-2">Remove</button>
                                 </form>
+                                <?php endif; ?>
                                 </p>
                             <?php else: ?>
                                 <p><strong>Head Pastor:</strong> <span class="text-muted">Not assigned</span></p>
@@ -69,7 +73,7 @@ use App\Utilities\Security;
                         </div>
                         
                         <!-- Head Pastor Assignment Form -->
-                        <?php if (!$church['head_pastor_name']): ?>
+                        <?php if ($is_admin && !$church['head_pastor_name']): ?>
                         <div class="mt-3 p-3 bg-light rounded">
                             <h6><i class="bx bx-user-plus me-2 text-primary"></i>Assign Head Pastor</h6>
                             <form method="POST" action="<?= AssetHelper::url("churches/{$church['id']}/assign-head-pastor") ?>">
@@ -140,7 +144,7 @@ use App\Utilities\Security;
         </div>
         
         <!-- Units Section -->
-        <div class="card">
+        <div class="card" id="units-section">
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <h4 class="card-title mb-0">Associated Units</h4>
@@ -158,6 +162,7 @@ use App\Utilities\Security;
                             <thead class="table-light">
                                 <tr>
                                     <th>Unit Name</th>
+                                    <th>Unit Head</th>
                                     <th>Assigned Date</th>
                                     <th>Assigned By</th>
                                     <th>Primary</th>
@@ -171,6 +176,27 @@ use App\Utilities\Security;
                                             <h5 class="font-size-14 mb-0"><?= htmlspecialchars($unit['unit_name']) ?></h5>
                                             <?php if ($unit['unit_description']): ?>
                                                 <p class="text-muted mb-0"><?= htmlspecialchars(substr($unit['unit_description'], 0, 50)) ?><?= strlen($unit['unit_description']) > 50 ? '...' : '' ?></p>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($unit['unit_head_name'])): ?>
+                                                <div class="d-flex align-items-center">
+                                                    <span class="fw-medium text-primary"><?= htmlspecialchars($unit['unit_head_name']) ?></span>
+                                                    <button type="button" class="btn btn-sm btn-soft-primary ms-2 p-1" 
+                                                            onclick="openAppointHeadModal(<?= (int)$unit['unit_id'] ?>, '<?= htmlspecialchars($unit['unit_name']) ?>', <?= (int)$unit['unit_head_user_id'] ?>)"
+                                                            title="Change Unit Head">
+                                                        <i class="bx bx-user-voice"></i>
+                                                    </button>
+                                                </div>
+                                            <?php else: ?>
+                                                <div class="d-flex align-items-center">
+                                                    <span class="text-muted small">Not appointed</span>
+                                                    <button type="button" class="btn btn-sm btn-soft-success ms-2 p-1" 
+                                                            onclick="openAppointHeadModal(<?= (int)$unit['unit_id'] ?>, '<?= htmlspecialchars($unit['unit_name']) ?>')"
+                                                            title="Appoint Unit Head">
+                                                        <i class="bx bx-plus"></i>
+                                                    </button>
+                                                </div>
                                             <?php endif; ?>
                                         </td>
                                         <td><?= date('M j, Y', strtotime($unit['assigned_date'])) ?></td>
@@ -386,6 +412,64 @@ use App\Utilities\Security;
     </div>
 </div>
 <?php endif; ?>
+
+<!-- Appoint Unit Head Modal -->
+<div class="modal fade" id="appointUnitHeadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="headModalTitle">Appoint Unit Head</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="<?= AssetHelper::url("churches/{$church['id']}/assign-unit-head") ?>">
+                <input type="hidden" name="_token" value="<?= $csrf_token ?>">
+                <input type="hidden" name="unit_id" id="head_unit_id">
+                <div class="modal-body">
+                    <p class="text-muted" id="headModalDesc">Appoint a leader for this department at this branch.</p>
+                    <div class="mb-3">
+                        <label for="head_user_id" class="form-label">Select Member <span class="text-danger">*</span></label>
+                        <select class="form-select" id="head_user_id" name="user_id" required>
+                            <option value="">Choose a user...</option>
+                            <?php foreach ($possible_unit_heads as $user): ?>
+                                <option value="<?= $user['id'] ?>"><?= htmlspecialchars($user['full_name'] . ' (' . $user['email'] . ')') ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <button type="submit" form="removeHeadForm" class="btn btn-outline-danger" id="btnRemoveHead" style="display:none;" onclick="return confirm('Are you sure you want to remove the current head for this unit?')">Remove Head</button>
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Appointment</button>
+                    </div>
+                </div>
+            </form>
+            <form id="removeHeadForm" method="POST" action="<?= AssetHelper::url("churches/{$church['id']}/remove-unit-head") ?>" style="display:none;">
+                <input type="hidden" name="_token" value="<?= $csrf_token ?>">
+                <input type="hidden" name="unit_id" id="remove_head_unit_id">
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openAppointHeadModal(unitId, unitName, currentHeadId = null) {
+    document.getElementById('head_unit_id').value = unitId;
+    document.getElementById('remove_head_unit_id').value = unitId;
+    document.getElementById('headModalTitle').innerText = 'Appoint Head for ' + unitName;
+    document.getElementById('headModalDesc').innerText = 'Select an active member to lead the ' + unitName + ' department.';
+    
+    const userSelect = document.getElementById('head_user_id');
+    userSelect.value = currentHeadId || '';
+    
+    // Show/hide remove button
+    document.getElementById('btnRemoveHead').style.display = currentHeadId ? 'block' : 'none';
+    
+    // Show modal
+    var myModal = new bootstrap.Modal(document.getElementById('appointUnitHeadModal'));
+    myModal.show();
+}
+</script>
 
 <style>
 .card {

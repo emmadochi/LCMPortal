@@ -13,7 +13,10 @@ class CSRFMiddleware {
             return $next();
         }
         
-        $token = $request->post('_token') ?? $request->input('_token');
+        // Retrieve token from request payload, query params, or HTTP header
+        $token = $request->post('_token') ?? 
+                 $request->input('_token') ?? 
+                 ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null);
         
         if (!$token || !Security::validateCSRFToken($token)) {
             http_response_code(403);

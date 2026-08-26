@@ -18,17 +18,38 @@ abstract class BaseController {
     }
 
     protected function render($view, $data = []) {
+        // Force 'admin' layout for church-specific views if needed
         $layout = $this->getLayout();
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+        if (strpos($uri, '/churches/') !== false && $layout === 'auth') {
+            $layout = 'admin';
+        }
+
+        // Ensure churchId is available if it exists in the controller
+        if (!isset($data['churchId']) && isset($this->churchId)) {
+            $data['churchId'] = $this->churchId;
+        }
+
+        // Standardize base path to app directory
+        $appPath = realpath(dirname(__DIR__));
         
         // Render view content first
         ob_start();
-        $viewPath = __DIR__ . "/../views/{$view}.php";
-        if (file_exists($viewPath)) {
-            extract($data); // Extract data for view
-            require_once $viewPath;
-        } else {
+        $viewFound = false;
+        foreach (['views', 'Views'] as $vDir) {
+            $viewPath = $appPath . DIRECTORY_SEPARATOR . $vDir . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $view) . '.php';
+            if (file_exists($viewPath)) {
+                extract($data);
+                include $viewPath;
+                $viewFound = true;
+                break;
+            }
+        }
+        
+        if (!$viewFound) {
             die("View not found: {$view}");
         }
+        
         $viewContent = ob_get_clean();
         
         // Add content to data array
@@ -36,10 +57,22 @@ abstract class BaseController {
         extract($data);
         
         // Render layout with content
-        $layoutPath = __DIR__ . "/../views/layouts/{$layout}.php";
-        if (file_exists($layoutPath)) {
-            require_once $layoutPath;
-        } else {
+        $layoutFound = false;
+        foreach (['views', 'Views'] as $vDir) {
+            $vDirPath = $appPath . DIRECTORY_SEPARATOR . $vDir;
+            if (is_dir($vDirPath)) {
+                $layoutPath = $vDirPath . DIRECTORY_SEPARATOR . 'layouts' . DIRECTORY_SEPARATOR . $layout . '.php';
+                if (file_exists($layoutPath)) {
+                    include $layoutPath;
+                    $layoutFound = true;
+                    break;
+                }
+            }
+        }
+        
+        if (!$layoutFound) {
+            // Output diagnostic comment and just the content
+            echo "<!-- Layout '{$layout}' not found in any views/layouts directory -->\n";
             echo $viewContent;
         }
     }

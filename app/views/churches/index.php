@@ -172,7 +172,7 @@ use App\Utilities\AssetHelper;
                                 <tr>
                                     <th>Church Name</th>
                                     <th>Location</th>
-                                    <th>Contact</th>
+                                    <th>Members</th>
                                     <th>Details</th>
                                     <th>Status</th>
                                     <th>Units</th>
@@ -205,18 +205,10 @@ use App\Utilities\AssetHelper;
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <?php if ($church['email']): ?>
-                                                <p class="mb-1">
-                                                    <i class="bx bx-envelope me-1 text-muted"></i>
-                                                    <?= htmlspecialchars($church['email']) ?>
-                                                </p>
-                                            <?php endif; ?>
-                                            <?php if ($church['phone']): ?>
-                                                <p class="mb-0">
-                                                    <i class="bx bx-phone me-1 text-muted"></i>
-                                                    <?= htmlspecialchars($church['phone']) ?>
-                                                </p>
-                                            <?php endif; ?>
+                                            <p class="mb-0 fw-semibold text-primary">
+                                                <i class="bx bx-group me-1"></i>
+                                                <?= $church['member_count'] ?? 0 ?> <?= ($church['member_count'] ?? 0) === 1 ? 'member' : 'members' ?>
+                                            </p>
                                         </td>
                                         <td>
                                             <?php if (!empty($church['pastor_name'])): ?>

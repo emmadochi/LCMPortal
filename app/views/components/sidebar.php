@@ -29,6 +29,13 @@ function isActive($uri, $currentUri) {
                     </a>
                 </li>
 
+                <li>
+                    <a href="<?= AssetHelper::url('evangelism') ?>" class="<?= isActive('/evangelism', $currentUri) ?>">
+                        <i data-feather="award"></i>
+                        <span data-key="t-evangelism">Evangelism</span>
+                    </a>
+                </li>
+
                 <?php if ($userRole === 'admin' || $userRole === 'director'): ?>
                 <li>
                     <a href="javascript: void(0);" class="has-arrow <?= isActive('/units', $currentUri) ?>">
@@ -73,13 +80,14 @@ function isActive($uri, $currentUri) {
                 </li>
                 <?php endif; ?>
 
-                <?php if ($userRole === 'admin'): ?>
+                <?php if ($userRole === 'admin' || $session->isHeadPastor()): ?>
                 <li>
                     <a href="javascript: void(0);" class="has-arrow <?= isActive('/churches', $currentUri) ?>">
                         <i data-feather="layers"></i>
                         <span data-key="t-churches">Church Management</span>
                     </a>
                     <ul class="sub-menu" aria-expanded="false">
+                        <?php if ($userRole === 'admin'): ?>
                         <li>
                             <a href="<?= AssetHelper::url('churches') ?>" class="<?= isActive('/churches', $currentUri) ?>">
                                 <span data-key="t-churches-list">All Churches</span>
@@ -98,6 +106,83 @@ function isActive($uri, $currentUri) {
                         <li>
                             <a href="<?= AssetHelper::url('targets/create') ?>" class="<?= isActive('/targets/create', $currentUri) ?>">
                                 <span>Set Target</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if ($session->isHeadPastor()): ?>
+                        <li>
+                            <a href="<?= AssetHelper::url('churches/' . $session->getHeadPastorChurchId() . '/membership') ?>" class="<?= strpos($currentUri, '/membership') !== false ? 'active' : '' ?>">
+                                <span>Membership Dashboard</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="<?= AssetHelper::url('churches/' . $session->getHeadPastorChurchId()) ?>" class="<?= strpos($currentUri, '/churches/' . $session->getHeadPastorChurchId()) !== false && strpos($currentUri, '/membership') === false ? 'active' : '' ?>">
+                                <span>My Church Details</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="<?= AssetHelper::url('churches/' . $session->getHeadPastorChurchId() . '/finance') ?>" class="<?= strpos($currentUri, '/finance') !== false ? 'active' : '' ?>">
+                                <span>Financial Dashboard</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="<?= AssetHelper::url('churches/' . $session->getHeadPastorChurchId() . '/finance/records') ?>" class="<?= strpos($currentUri, '/finance/records') !== false ? 'active' : '' ?>">
+                                <span>Financial Records</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="<?= AssetHelper::url('churches/' . $session->getHeadPastorChurchId() . '/property') ?>" class="<?= strpos($currentUri, '/property') !== false ? 'active' : '' ?>">
+                                <span>Property Dashboard</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="<?= AssetHelper::url('churches/' . $session->getHeadPastorChurchId() . '/property/list') ?>" class="<?= strpos($currentUri, '/property/list') !== false ? 'active' : '' ?>">
+                                <span>Property List</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                    </ul>
+                </li>
+<?php if ($session->isHeadPastor()): ?>
+                <li>
+                    <a href="<?= AssetHelper::url('churches/' . $session->getHeadPastorChurchId() . '#units-section') ?>" class="<?= strpos($currentUri, '#units-section') !== false ? 'active' : '' ?>">
+                        <i data-feather="users"></i>
+                        <span data-key="t-unit-management">Unit Management</span>
+                    </a>
+                </li>
+<?php endif; ?>
+                <?php endif; ?>
+
+                <?php if ($session->isUnitHead()): ?>
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow <?= isActive('/my-unit', $currentUri) ?>">
+                        <i data-feather="briefcase"></i>
+                        <span data-key="t-unit-leadership">Unit Leadership</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li>
+                            <a href="<?= AssetHelper::url('my-unit/dashboard') ?>" class="<?= isActive('my-unit/dashboard', $currentUri) ?>">
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="<?= AssetHelper::url('my-unit/members') ?>" class="<?= isActive('my-unit/members', $currentUri) ?>">
+                                <span>Members</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="<?= AssetHelper::url('my-unit/attendance') ?>" class="<?= isActive('my-unit/attendance', $currentUri) ?>">
+                                <span>Roll Call Attendance</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="<?= AssetHelper::url('my-unit/reports') ?>" class="<?= isActive('my-unit/reports', $currentUri) ?>">
+                                <span>narrative Reports</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="<?= AssetHelper::url('my-unit/finance') ?>" class="<?= isActive('my-unit/finance', $currentUri) ?>">
+                                <span>Finances</span>
                             </a>
                         </li>
                     </ul>
@@ -136,24 +221,46 @@ function isActive($uri, $currentUri) {
                 </li>
                 <?php endif; ?>
 
+                <?php if ($session->hasPermission('manage_reports') || $session->hasPermission('view_all_reports') || $this->session->hasPermission('create_reports')): ?>
                 <li>
-                    <a href="javascript: void(0);" class="has-arrow <?= isActive('/outreach-reports', $currentUri) ?>">
+                    <?php $outreachMenuIsActive = isActive('/outreach-reports', $currentUri) || strpos($currentUri, '/outreach') !== false; ?>
+                    <a href="javascript: void(0);" class="has-arrow <?= $outreachMenuIsActive ? 'active' : '' ?>">
                         <i data-feather="bar-chart-2"></i>
                         <span>Outreach / Event Reports</span>
                     </a>
                     <ul class="sub-menu" aria-expanded="false">
-                        <li>
-                            <a href="<?= AssetHelper::url('outreach-reports') ?>" class="<?= isActive('/outreach-reports', $currentUri) ?>">
-                                <span>All Reports</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="<?= AssetHelper::url('outreach-reports/create') ?>" class="<?= isActive('/outreach-reports/create', $currentUri) ?>">
-                                <span>New Report</span>
-                            </a>
-                        </li>
+                        <?php if ($session->isHeadPastor()): ?>
+                            <?php $baseUrl = 'churches/' . $session->getHeadPastorChurchId() . '/outreach'; ?>
+                            <li>
+                                <a href="<?= AssetHelper::url($baseUrl) ?>" class="<?= isActive($baseUrl, $currentUri) ?>">
+                                    <span>Outreach Dashboard</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="<?= AssetHelper::url($baseUrl . '/records') ?>" class="<?= isActive($baseUrl . '/records', $currentUri) ?>">
+                                    <span>Outreach Records</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="<?= AssetHelper::url($baseUrl . '/create') ?>" class="<?= isActive($baseUrl . '/create', $currentUri) ?>">
+                                    <span>New Report</span>
+                                </a>
+                            </li>
+                        <?php else: ?>
+                            <li>
+                                <a href="<?= AssetHelper::url('outreach-reports') ?>" class="<?= isActive('/outreach-reports', $currentUri) ?>">
+                                    <span>All Reports</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="<?= AssetHelper::url('outreach-reports/create') ?>" class="<?= isActive('/outreach-reports/create', $currentUri) ?>">
+                                    <span>New Report</span>
+                                </a>
+                            </li>
+                        <?php endif; ?>
                     </ul>
                 </li>
+                <?php endif; ?>
                 <li>
                     <a href="javascript: void(0);" class="has-arrow <?= isActive('/reports', $currentUri) ?>">
                         <i data-feather="file-text"></i>
@@ -197,26 +304,7 @@ function isActive($uri, $currentUri) {
                     </ul>
                 </li>
 
-                <?php if ($userRole === 'admin' || $userRole === 'director'): ?>
-                <li>
-                    <a href="javascript: void(0);" class="has-arrow <?= isActive('/finance', $currentUri) ?>">
-                        <i data-feather="dollar-sign"></i>
-                        <span data-key="t-finance">Finance</span>
-                    </a>
-                    <ul class="sub-menu" aria-expanded="false">
-                        <li>
-                            <a href="<?= AssetHelper::url('finance') ?>" class="<?= isActive('/finance', $currentUri) ?>">
-                                <span data-key="t-finance-list">Financial Records</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="<?= AssetHelper::url('finance/create') ?>" class="<?= isActive('/finance/create', $currentUri) ?>">
-                                <span data-key="t-add-record">Add Record</span>
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-                <?php endif; ?>
+
 
                 <li>
                     <a href="javascript: void(0);" class="has-arrow <?= isActive('/media', $currentUri) ?>">
@@ -256,31 +344,7 @@ function isActive($uri, $currentUri) {
                     </ul>
                 </li>
 
-                <?php if ($userRole === 'admin'): ?>
-                <li>
-                    <a href="javascript: void(0);" class="has-arrow <?= isActive('/properties', $currentUri) || isActive('/property-categories', $currentUri) ?>">
-                        <i data-feather="package"></i>
-                        <span>Properties</span>
-                    </a>
-                    <ul class="sub-menu" aria-expanded="false">
-                        <li>
-                            <a href="<?= AssetHelper::url('properties') ?>" class="<?= isActive('/properties', $currentUri) ?>">
-                                <span>All Properties</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="<?= AssetHelper::url('properties/create') ?>" class="<?= isActive('/properties/create', $currentUri) ?>">
-                                <span>Add Property</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="<?= AssetHelper::url('property-categories') ?>" class="<?= isActive('/property-categories', $currentUri) ?>">
-                                <span>Categories</span>
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-                <?php endif; ?>
+
 
                 <li>
                     <a href="<?= AssetHelper::url('notifications/show') ?>" class="<?= isActive('/notifications/show', $currentUri) ?>">
