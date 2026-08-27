@@ -12,5 +12,10 @@ return array(
     'Masterminds\\' => array($vendorDir . '/masterminds/html5/src'),
     'FontLib\\' => array($vendorDir . '/phenx/php-font-lib/src/FontLib'),
     'Dompdf\\' => array($vendorDir . '/dompdf/dompdf/src'),
+    'App\\Core\\' => array($baseDir . '/app/core'),
+    'App\\Controllers\\' => array($baseDir . '/app/controllers'),
+    'App\\Models\\' => array($baseDir . '/app/models'),
+    'App\\Middleware\\' => array($baseDir . '/app/middleware'),
+    'App\\Utilities\\' => array($baseDir . '/app/utilities'),
     'App\\' => array($baseDir . '/app'),
 );

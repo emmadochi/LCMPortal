@@ -30,6 +30,11 @@ class ComposerStaticInitae05109e410f08ca0624b00bd3f15d77
         ),
         'A' =>
         array (
+            'App\\Utilities\\' => 14,
+            'App\\Middleware\\' => 15,
+            'App\\Models\\' => 11,
+            'App\\Controllers\\' => 16,
+            'App\\Core\\' => 9,
             'App\\' => 4,
         ),
     );
@@ -58,6 +63,26 @@ class ComposerStaticInitae05109e410f08ca0624b00bd3f15d77
         'Dompdf\\' =>
         array (
             0 => __DIR__ . '/..' . '/dompdf/dompdf/src',
+        ),
+        'App\\Core\\' =>
+        array (
+            0 => __DIR__ . '/../..' . '/app/core',
+        ),
+        'App\\Controllers\\' =>
+        array (
+            0 => __DIR__ . '/../..' . '/app/controllers',
+        ),
+        'App\\Models\\' =>
+        array (
+            0 => __DIR__ . '/../..' . '/app/models',
+        ),
+        'App\\Middleware\\' =>
+        array (
+            0 => __DIR__ . '/../..' . '/app/middleware',
+        ),
+        'App\\Utilities\\' =>
+        array (
+            0 => __DIR__ . '/../..' . '/app/utilities',
         ),
         'App\\' =>
         array (
