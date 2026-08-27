@@ -14,6 +14,17 @@ use App\Utilities\AssetHelper;
     <!-- App favicon -->
     <link rel="shortcut icon" href="<?= AssetHelper::image('favicon.ico') ?>">
     
+    <!-- PWA Manifest & Mobile Web App Meta -->
+    <link rel="manifest" href="<?= AssetHelper::url('manifest.json') ?>">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LCM Portal">
+    <meta name="sw-path" content="<?= AssetHelper::url('sw.js') ?>">
+    <meta name="pwa-icon" content="<?= AssetHelper::image('pwa/icon-192x192.png') ?>">
+    <link rel="apple-touch-icon" href="<?= AssetHelper::image('pwa/apple-touch-icon.png') ?>">
+    
     <!-- Google Font: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,6 +42,7 @@ use App\Utilities\AssetHelper;
     <!-- Custom Admin Css -->
     <link href="<?= AssetHelper::css('admin-custom.css') ?>" rel="stylesheet" type="text/css" />
     <link href="<?= AssetHelper::css('premium-theme.css') ?>" rel="stylesheet" type="text/css" />
+    <link href="<?= AssetHelper::css('mobile-pwa.css') ?>" rel="stylesheet" type="text/css" />
     
     <!-- DataTables -->
     <link href="<?= AssetHelper::lib('datatables.net-bs4/css/dataTables.bootstrap4.min.css') ?>" rel="stylesheet" type="text/css" />
@@ -316,6 +328,13 @@ use App\Utilities\AssetHelper;
                     </li>
                     <?php endif; ?>
 
+                    <!-- PWA Quick Install Button in Sidebar -->
+                    <li class="pwa-install-trigger" style="display: none;">
+                        <a href="javascript:void(0);" class="waves-effect text-primary fw-bold" style="background: rgba(79, 70, 229, 0.08); border-radius: 8px; margin: 8px 12px;">
+                            <i class="bx bx-download text-primary"></i>
+                            <span>Install LCM App</span>
+                        </a>
+                    </li>
 
                 </ul>
             </div>
@@ -381,6 +400,37 @@ use App\Utilities\AssetHelper;
 </div>
 <!-- END layout-wrapper -->
 
+<!-- Mobile App Bottom Navigation Dock (PWA Ergonomics) -->
+<nav class="mobile-app-dock" aria-label="Mobile Navigation">
+    <a href="<?= AssetHelper::url('') ?>" class="mobile-dock-item <?= ($_SERVER['REQUEST_URI'] === '/' || strpos($_SERVER['REQUEST_URI'], '/dashboard') !== false) ? 'active' : '' ?>">
+        <i class="bx bx-home-alt-2"></i>
+        <span>Home</span>
+    </a>
+    <a href="<?= AssetHelper::url($this->session->isHeadPastor() ? 'churches/' . $this->session->getHeadPastorChurchId() . '/finance' : 'finance') ?>" class="mobile-dock-item <?= (strpos($_SERVER['REQUEST_URI'], '/finance') !== false) ? 'active' : '' ?>">
+        <i class="bx bx-wallet"></i>
+        <span>Finances</span>
+    </a>
+    <a href="<?= AssetHelper::url($this->session->isHeadPastor() ? 'churches/' . $this->session->getHeadPastorChurchId() . '/attendance' : 'attendance') ?>" class="mobile-dock-item <?= (strpos($_SERVER['REQUEST_URI'], '/attendance') !== false) ? 'active' : '' ?>">
+        <i class="bx bx-calendar-check"></i>
+        <span>Attendance</span>
+    </a>
+    <?php if ($this->session->hasPermission('manage_users')): ?>
+    <a href="<?= AssetHelper::url('churches') ?>" class="mobile-dock-item <?= (strpos($_SERVER['REQUEST_URI'], '/churches') !== false) ? 'active' : '' ?>">
+        <i class="bx bx-church"></i>
+        <span>Branches</span>
+    </a>
+    <?php else: ?>
+    <a href="<?= AssetHelper::url('profile') ?>" class="mobile-dock-item <?= (strpos($_SERVER['REQUEST_URI'], '/profile') !== false) ? 'active' : '' ?>">
+        <i class="bx bx-user-circle"></i>
+        <span>Profile</span>
+    </a>
+    <?php endif; ?>
+    <a href="javascript:void(0);" id="vertical-menu-btn-mobile" class="mobile-dock-item" onclick="document.body.classList.toggle('sidebar-enable');">
+        <i class="bx bx-menu"></i>
+        <span>Menu</span>
+    </a>
+</nav>
+
 <!-- Right Sidebar -->
 <!-- Add if needed -->
 
@@ -412,6 +462,9 @@ use App\Utilities\AssetHelper;
 
 <!-- App js -->
 <script src="<?= AssetHelper::js('app.js') ?>"></script>
+
+<!-- PWA Installation & Service Worker registration -->
+<script src="<?= AssetHelper::js('pwa-install.js') ?>"></script>
 
 <script>
 // Setup jQuery AJAX to automatically include CSRF token in header

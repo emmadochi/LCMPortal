@@ -15,6 +15,17 @@ $title = $title ?? 'Login';
     <!-- App favicon -->
     <link rel="shortcut icon" href="<?= AssetHelper::image('favicon.ico') ?>">
 
+    <!-- PWA Manifest & Mobile Web App Meta -->
+    <link rel="manifest" href="<?= AssetHelper::url('manifest.json') ?>">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LCM Portal">
+    <meta name="sw-path" content="<?= AssetHelper::url('sw.js') ?>">
+    <meta name="pwa-icon" content="<?= AssetHelper::image('pwa/icon-192x192.png') ?>">
+    <link rel="apple-touch-icon" href="<?= AssetHelper::image('pwa/apple-touch-icon.png') ?>">
+
     <!-- preloader css -->
     <link rel="stylesheet" href="<?= AssetHelper::css('preloader.min.css') ?>" type="text/css" />
 
@@ -24,6 +35,7 @@ $title = $title ?? 'Login';
     <link href="<?= AssetHelper::css('icons.min.css') ?>" rel="stylesheet" type="text/css" />
     <!-- App Css-->
     <link href="<?= AssetHelper::css('app.min.css') ?>" id="app-style" rel="stylesheet" type="text/css" />
+    <link href="<?= AssetHelper::css('mobile-pwa.css') ?>" rel="stylesheet" type="text/css" />
 </head>
 
 <body>
@@ -101,6 +113,8 @@ $title = $title ?? 'Login';
     <script src="<?= AssetHelper::lib('pace-js/pace.min.js') ?>"></script>
     <!-- password addon init -->
     <script src="<?= AssetHelper::js('pages/pass-addon.init.js') ?>"></script>
+    <!-- PWA Installation & Service Worker registration -->
+    <script src="<?= AssetHelper::js('pwa-install.js') ?>"></script>
 </body>
 </html>
 
