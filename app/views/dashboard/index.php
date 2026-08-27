@@ -24,6 +24,8 @@ $directorUnits     = $session->getDirectorUnits();
 $isPastor          = $session->get('is_pastor', false);
 $isPastorDirector  = $session->get('is_pastor_director', false);
 
+$totalChurches    = $totalChurches ?? 0;
+$totalMembers     = $totalMembers ?? ($totalUsers ?? 0);
 $totalUnits        = $totalUnits ?? 0;
 $totalUsers        = $totalUsers ?? 0;
 $totalReports      = $totalReports ?? 0;
@@ -196,17 +198,23 @@ $greeting  = (int)date('H') < 12 ? 'Good Morning' : ((int)date('H') < 17 ? 'Good
     font-size: 1.3rem; margin-bottom: 12px;
 }
 
+.kpi-churches .db-kpi-accent   { background: linear-gradient(90deg,#4f46e5,#6366f1); }
+.kpi-churches .db-kpi-icon-wrap { background:#eef2ff; color:#4f46e5; }
+
+.kpi-finance .db-kpi-accent   { background: linear-gradient(90deg,#10b981,#059669); }
+.kpi-finance .db-kpi-icon-wrap { background:#ecfdf5; color:#10b981; }
+
 .kpi-units .db-kpi-accent   { background: linear-gradient(90deg,#4f46e5,#818cf8); }
 .kpi-units .db-kpi-icon-wrap { background:#eef2ff; color:#4f46e5; }
 
-.kpi-users .db-kpi-accent   { background: linear-gradient(90deg,#10b981,#34d399); }
-.kpi-users .db-kpi-icon-wrap { background:#ecfdf5; color:#10b981; }
+.kpi-users .db-kpi-accent   { background: linear-gradient(90deg,#0ea5e9,#38bdf8); }
+.kpi-users .db-kpi-icon-wrap { background:#f0f9ff; color:#0284c7; }
 
-.kpi-reports .db-kpi-accent   { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
-.kpi-reports .db-kpi-icon-wrap { background:#fffbeb; color:#f59e0b; }
+.kpi-reports .db-kpi-accent   { background: linear-gradient(90deg,#8b5cf6,#a78bfa); }
+.kpi-reports .db-kpi-icon-wrap { background:#f5f3ff; color:#7c3aed; }
 
-.kpi-attendance .db-kpi-accent   { background: linear-gradient(90deg,#f43f5e,#fb7185); }
-.kpi-attendance .db-kpi-icon-wrap { background:#fff1f2; color:#f43f5e; }
+.kpi-attendance .db-kpi-accent   { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
+.kpi-attendance .db-kpi-icon-wrap { background:#fffbeb; color:#d97706; }
 
 /* Panels */
 .db-panel {
@@ -378,44 +386,139 @@ $greeting  = (int)date('H') < 12 ? 'Good Morning' : ((int)date('H') < 17 ? 'Good
         </div>
     </div>
 
-    <!-- ── KPI Cards ── -->
+    <!-- ── Executive KPI Cards ── -->
     <div class="db-kpi-grid">
 
-        <div class="db-kpi kpi-units">
-            <div class="db-kpi-accent"></div>
-            <div class="db-kpi-icon-wrap"><i class="bx bx-buildings"></i></div>
-            <div class="db-kpi-label"><?= $isHeadPastor ? 'My Units' : 'Total Units' ?></div>
-            <div class="db-kpi-value db-counter" data-target="<?= $totalUnits ?>">0</div>
-            <div class="db-kpi-sub">active units registered</div>
-            <div class="db-kpi-bg-icon">🏛️</div>
-        </div>
+        <?php if (!$isHeadPastor): ?>
+            <!-- 1. Super Admin: Total Churches / Branches -->
+            <a href="<?= AssetHelper::url('churches') ?>" class="db-kpi kpi-churches text-decoration-none d-block">
+                <div class="db-kpi-accent"></div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="db-kpi-icon-wrap"><i class="bx bx-church"></i></div>
+                    <span class="badge bg-light text-primary border rounded-pill px-2 py-1 small">
+                        Branches <i class="bx bx-right-arrow-alt"></i>
+                    </span>
+                </div>
+                <div class="db-kpi-label">Total Branches</div>
+                <div class="db-kpi-value"><span class="db-counter" data-target="<?= $totalChurches ?>"><?= $totalChurches ?></span></div>
+                <div class="db-kpi-sub">active church campuses</div>
+                <div class="db-kpi-bg-icon">🏛️</div>
+            </a>
 
-        <div class="db-kpi kpi-users">
-            <div class="db-kpi-accent"></div>
-            <div class="db-kpi-icon-wrap"><i class="bx bx-group"></i></div>
-            <div class="db-kpi-label"><?= $isHeadPastor ? 'Members' : 'Total Users' ?></div>
-            <div class="db-kpi-value db-counter" data-target="<?= $totalUsers ?>">0</div>
-            <div class="db-kpi-sub">active portal accounts</div>
-            <div class="db-kpi-bg-icon">👥</div>
-        </div>
+            <!-- 2. Super Admin: Global Net Treasury Balance -->
+            <a href="<?= AssetHelper::url('finance') ?>" class="db-kpi kpi-finance text-decoration-none d-block">
+                <div class="db-kpi-accent"></div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="db-kpi-icon-wrap"><i class="bx bx-wallet"></i></div>
+                    <span class="badge bg-light text-success border rounded-pill px-2 py-1 small">
+                        Treasury <i class="bx bx-right-arrow-alt"></i>
+                    </span>
+                </div>
+                <div class="db-kpi-label">Net Treasury Balance</div>
+                <div class="db-kpi-value text-success">
+                    <span class="db-counter" data-prefix="₦" data-target="<?= round($netBalance) ?>">₦<?= number_format(round($netBalance)) ?></span>
+                </div>
+                <div class="db-kpi-sub">
+                    <?= $netBalance >= 0 ? '<span class="text-success fw-bold"><i class="bx bx-shield-check"></i> Operating Surplus</span>' : '<span class="text-danger fw-bold"><i class="bx bx-error-circle"></i> Deficit</span>' ?> · Across all branches
+                </div>
+                <div class="db-kpi-bg-icon">💰</div>
+            </a>
 
-        <div class="db-kpi kpi-reports">
-            <div class="db-kpi-accent"></div>
-            <div class="db-kpi-icon-wrap"><i class="bx bx-file-blank"></i></div>
-            <div class="db-kpi-label">Total Reports</div>
-            <div class="db-kpi-value db-counter" data-target="<?= $totalReports ?>">0</div>
-            <div class="db-kpi-sub">reports submitted overall</div>
-            <div class="db-kpi-bg-icon">📋</div>
-        </div>
+            <!-- 3. Super Admin: Ministry Membership -->
+            <a href="<?= AssetHelper::url('users') ?>" class="db-kpi kpi-users text-decoration-none d-block">
+                <div class="db-kpi-accent"></div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="db-kpi-icon-wrap"><i class="bx bx-group"></i></div>
+                    <span class="badge bg-light text-info border rounded-pill px-2 py-1 small">
+                        Directory <i class="bx bx-right-arrow-alt"></i>
+                    </span>
+                </div>
+                <div class="db-kpi-label">Ministry Membership</div>
+                <div class="db-kpi-value"><span class="db-counter" data-target="<?= $totalMembers ?>"><?= $totalMembers ?></span></div>
+                <div class="db-kpi-sub">registered disciples & leaders</div>
+                <div class="db-kpi-bg-icon">👥</div>
+            </a>
 
-        <div class="db-kpi kpi-attendance">
-            <div class="db-kpi-accent"></div>
-            <div class="db-kpi-icon-wrap"><i class="bx bx-calendar-check"></i></div>
-            <div class="db-kpi-label">Attendance Records</div>
-            <div class="db-kpi-value db-counter" data-target="<?= $totalAttendance ?>">0</div>
-            <div class="db-kpi-sub">total attendance logged</div>
-            <div class="db-kpi-bg-icon">📅</div>
-        </div>
+            <!-- 4. Super Admin: Total Attendance -->
+            <a href="<?= AssetHelper::url('attendance') ?>" class="db-kpi kpi-attendance text-decoration-none d-block">
+                <div class="db-kpi-accent"></div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="db-kpi-icon-wrap"><i class="bx bx-calendar-check"></i></div>
+                    <span class="badge bg-light text-warning border rounded-pill px-2 py-1 small">
+                        Services <i class="bx bx-right-arrow-alt"></i>
+                    </span>
+                </div>
+                <div class="db-kpi-label">Service Attendance</div>
+                <div class="db-kpi-value"><span class="db-counter" data-target="<?= $totalAttendance ?>"><?= $totalAttendance ?></span></div>
+                <div class="db-kpi-sub">logged across all worship services</div>
+                <div class="db-kpi-bg-icon">📈</div>
+            </a>
+
+        <?php else: ?>
+            <!-- 1. Head Pastor: My Units -->
+            <a href="<?= AssetHelper::url('units') ?>" class="db-kpi kpi-units text-decoration-none d-block">
+                <div class="db-kpi-accent"></div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="db-kpi-icon-wrap"><i class="bx bx-buildings"></i></div>
+                    <span class="badge bg-light text-primary border rounded-pill px-2 py-1 small">
+                        Units <i class="bx bx-right-arrow-alt"></i>
+                    </span>
+                </div>
+                <div class="db-kpi-label">Branch Units</div>
+                <div class="db-kpi-value"><span class="db-counter" data-target="<?= $totalUnits ?>"><?= $totalUnits ?></span></div>
+                <div class="db-kpi-sub">active operational departments</div>
+                <div class="db-kpi-bg-icon">🏛️</div>
+            </a>
+
+            <!-- 2. Head Pastor: Branch Treasury Balance -->
+            <a href="<?= AssetHelper::url("churches/{$headPastorChurchId}/finance") ?>" class="db-kpi kpi-finance text-decoration-none d-block">
+                <div class="db-kpi-accent"></div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="db-kpi-icon-wrap"><i class="bx bx-wallet"></i></div>
+                    <span class="badge bg-light text-success border rounded-pill px-2 py-1 small">
+                        Finance <i class="bx bx-right-arrow-alt"></i>
+                    </span>
+                </div>
+                <div class="db-kpi-label">Branch Treasury</div>
+                <div class="db-kpi-value text-success">
+                    <span class="db-counter" data-prefix="₦" data-target="<?= round($netBalance) ?>">₦<?= number_format(round($netBalance)) ?></span>
+                </div>
+                <div class="db-kpi-sub">
+                    <?= $netBalance >= 0 ? '<span class="text-success fw-bold">Surplus</span>' : '<span class="text-danger fw-bold">Deficit</span>' ?> · Local liquid balance
+                </div>
+                <div class="db-kpi-bg-icon">💰</div>
+            </a>
+
+            <!-- 3. Head Pastor: Branch Members -->
+            <a href="<?= AssetHelper::url("churches/{$headPastorChurchId}/members") ?>" class="db-kpi kpi-users text-decoration-none d-block">
+                <div class="db-kpi-accent"></div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="db-kpi-icon-wrap"><i class="bx bx-group"></i></div>
+                    <span class="badge bg-light text-info border rounded-pill px-2 py-1 small">
+                        Members <i class="bx bx-right-arrow-alt"></i>
+                    </span>
+                </div>
+                <div class="db-kpi-label">Branch Members</div>
+                <div class="db-kpi-value"><span class="db-counter" data-target="<?= $totalMembers ?>"><?= $totalMembers ?></span></div>
+                <div class="db-kpi-sub">registered in <?= htmlspecialchars($headPastorChurchName ?? 'Local Branch') ?></div>
+                <div class="db-kpi-bg-icon">👥</div>
+            </a>
+
+            <!-- 4. Head Pastor: Branch Attendance -->
+            <a href="<?= AssetHelper::url("churches/{$headPastorChurchId}/attendance") ?>" class="db-kpi kpi-attendance text-decoration-none d-block">
+                <div class="db-kpi-accent"></div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="db-kpi-icon-wrap"><i class="bx bx-calendar-check"></i></div>
+                    <span class="badge bg-light text-warning border rounded-pill px-2 py-1 small">
+                        Services <i class="bx bx-right-arrow-alt"></i>
+                    </span>
+                </div>
+                <div class="db-kpi-label">Branch Attendance</div>
+                <div class="db-kpi-value"><span class="db-counter" data-target="<?= $totalAttendance ?>"><?= $totalAttendance ?></span></div>
+                <div class="db-kpi-sub">service attendances logged</div>
+                <div class="db-kpi-bg-icon">📅</div>
+            </a>
+        <?php endif; ?>
 
     </div>
 
@@ -792,13 +895,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ── Count-up ──────────────────────────────────────
     document.querySelectorAll('.db-counter').forEach(el => {
-        const target = parseInt(el.dataset.target) || 0;
+        const target = parseFloat(el.dataset.target) || 0;
+        const prefix = el.dataset.prefix || '';
         const dur = 900, step = 16, steps = dur / step;
         let cur = 0;
         const inc = target / steps;
         const t = setInterval(() => {
             cur = Math.min(cur + inc, target);
-            el.textContent = Math.round(cur).toLocaleString();
+            el.textContent = prefix + Math.round(cur).toLocaleString();
             if (cur >= target) clearInterval(t);
         }, step);
     });

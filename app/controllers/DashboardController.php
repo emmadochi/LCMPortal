@@ -21,9 +21,25 @@ class DashboardController extends BaseController {
         $headPastorChurchId = $isHeadPastor ? $this->session->getHeadPastorChurchId() : null;
         
         // Get basic statistics
+        $totalChurches = 0;
+        $totalMembers = 0;
         $totalUnits = 0;
         $totalUsers = 0;
         
+        try {
+            $churchModel = new Church();
+            if ($isHeadPastor && $headPastorChurchId) {
+                $totalChurches = 1;
+            } else {
+                $totalChurches = $churchModel->count(['status' => 'active']);
+                if ($totalChurches === 0) {
+                    $totalChurches = $churchModel->count();
+                }
+            }
+        } catch (\Exception $e) {
+            error_log("DashboardController: Error getting church count: " . $e->getMessage());
+        }
+
         try {
             if ($isHeadPastor && $headPastorChurchId) {
                 $churchModel = new Church();
@@ -39,8 +55,10 @@ class DashboardController extends BaseController {
             if ($isHeadPastor && $headPastorChurchId) {
                 $churchModel = new Church();
                 $totalUsers = count($churchModel->getChurchMemberUsers($headPastorChurchId));
+                $totalMembers = $totalUsers;
             } else {
                 $totalUsers = $userModel->count(['status' => 'active']);
+                $totalMembers = $totalUsers;
             }
         } catch (\Exception $e) {
             error_log("DashboardController: Error getting user count: " . $e->getMessage());
@@ -489,6 +507,8 @@ class DashboardController extends BaseController {
         $this->render('dashboard/index', [
             'title' => 'Dashboard',
             'pageTitle' => 'Dashboard',
+            'totalChurches' => $totalChurches,
+            'totalMembers' => $totalMembers,
             'totalUnits' => $totalUnits,
             'totalUsers' => $totalUsers,
             'totalReports' => $totalReports,
