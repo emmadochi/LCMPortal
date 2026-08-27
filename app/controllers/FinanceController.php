@@ -535,15 +535,17 @@ class FinanceController extends BaseModuleController
 
         // Pledges summary
         $pledgeModel = new \App\Models\Pledge();
-        $myPledges = $pledgeModel->findAll(['user_id' => $userId]) ?: [];
+        $myPledges = $pledgeModel->getPledgesByMember((int)$userId);
         $activePledgesCount = 0;
         $totalPledgeAmount = 0.0;
         $totalPledgePaid = 0.0;
-        foreach ($myPledges as $p) {
-            $totalPledgeAmount += (float)$p['amount'];
-            $totalPledgePaid += (float)($p['amount_paid'] ?? 0);
-            if (($p['status'] ?? '') !== 'fulfilled') {
-                $activePledgesCount++;
+        if (!empty($myPledges)) {
+            foreach ($myPledges as $p) {
+                $totalPledgeAmount += (float)($p['target_amount'] ?? 0);
+                $totalPledgePaid += (float)($p['amount_paid'] ?? 0);
+                if (($p['status'] ?? '') !== 'fulfilled') {
+                    $activePledgesCount++;
+                }
             }
         }
 

@@ -15,10 +15,13 @@ abstract class BaseModel {
 
     public function find($id) {
         $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE {$this->primaryKey} = ?");
+        if (!$stmt) {
+            return null;
+        }
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $result = $stmt->get_result();
-        return $result->fetch_assoc();
+        return $result ? $result->fetch_assoc() : null;
     }
 
     public function findAll($conditions = [], $orderBy = null, $limit = null) {
@@ -44,12 +47,15 @@ abstract class BaseModel {
         }
         
         $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
         if (!empty($params)) {
             $stmt->bind_param($types, ...$params);
         }
         $stmt->execute();
         $result = $stmt->get_result();
-        return $result->fetch_all(MYSQLI_ASSOC);
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
     public function create($data) {
