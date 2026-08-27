@@ -123,10 +123,40 @@ class Church extends BaseModel {
     }
 
     public function getChurchMemberUsers($churchId) {
-        $stmt = $this->db->prepare("SELECT *, CONCAT(first_name, ' ', last_name) as full_name FROM users WHERE church_id = ? AND status = 'active' ORDER BY last_name ASC, first_name ASC");
-        $stmt->bind_param("i", $churchId);
-        $stmt->execute();
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        return $this->getAllChurchCongregation($churchId);
+    }
+
+    /**
+     * Get all active members of a church across direct church assignments and all its units
+     */
+    public function getAllChurchCongregation($churchId = null) {
+        if ($churchId) {
+            $unitIds = $this->getChurchUnitIds($churchId);
+            $unitPlaceholders = !empty($unitIds) ? implode(',', array_fill(0, count($unitIds), '?')) : '0';
+            
+            $sql = "SELECT DISTINCT u.*, CONCAT(u.first_name, ' ', u.last_name) as full_name 
+                    FROM users u 
+                    LEFT JOIN unit_user uu ON u.id = uu.user_id 
+                    LEFT JOIN unit_directors ud ON u.id = ud.user_id 
+                    WHERE (u.church_id = ? " . (!empty($unitIds) ? "OR uu.unit_id IN ({$unitPlaceholders}) OR ud.unit_id IN ({$unitPlaceholders})" : "") . ")
+                    AND u.status = 'active' 
+                    ORDER BY u.first_name ASC, u.last_name ASC";
+            
+            $stmt = $this->db->prepare($sql);
+            $types = 'i';
+            $params = [$churchId];
+            if (!empty($unitIds)) {
+                $types .= str_repeat('i', count($unitIds) * 2);
+                $params = array_merge($params, $unitIds, $unitIds);
+            }
+            $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        } else {
+            $stmt = $this->db->prepare("SELECT *, CONCAT(first_name, ' ', last_name) as full_name FROM users WHERE status = 'active' ORDER BY first_name ASC, last_name ASC");
+            $stmt->execute();
+            return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
     }
 
     /**

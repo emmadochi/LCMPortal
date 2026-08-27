@@ -287,22 +287,24 @@ class AttendanceController extends BaseController {
         if ($churchId) {
             $church = $this->churchModel->find($churchId);
             if ($church) {
+                $units[] = ['id' => 0, 'name' => '🌟 All Church Members (Main Service)'];
                 $churchUnits = $this->churchModel->getChurchUnits($churchId);
                 foreach ($churchUnits as $cu) {
                     $units[] = ['id' => $cu['unit_id'], 'name' => $cu['unit_name']];
                 }
-                $units[] = ['id' => 0, 'name' => 'All Church (Main Service)'];
                 $churchFilter = ['id' => $churchId, 'name' => $church['name']];
             }
         }
         if (empty($units)) {
-            $units = $this->unitModel->getActiveUnits();
+            $units[] = ['id' => 0, 'name' => '🌟 All Church Members (General)'];
+            $activeUnits = $this->unitModel->getActiveUnits();
+            foreach ($activeUnits as $au) {
+                $units[] = ['id' => $au['id'], 'name' => $au['name']];
+            }
         }
 
-        // If unitId is not set, default to first available unit or 0 (All church)
-        if ($unitId === -1 && !empty($units)) {
-            $unitId = (int)$units[0]['id'];
-        } elseif ($unitId === -1) {
+        // Default to 0 (All Church Members) if not explicitly chosen
+        if ($unitId === -1) {
             $unitId = 0;
         }
 
@@ -310,16 +312,11 @@ class AttendanceController extends BaseController {
         $existingMarks = [];
         $eventTypes = Attendance::getEventTypes();
         $serviceDescription = '';
-        $isChurchWide = ($churchId > 0 && $unitId === 0);
+        $isChurchWide = ($unitId === 0);
 
         if ($unitId >= 0 && $eventDate && $eventType) {
             if ($isChurchWide) {
-                $unitIds = $this->churchModel->getChurchUnitIds($churchId);
-                if (!empty($unitIds)) {
-                    $members = $this->userModel->getUsersByUnitIds($unitIds, 'first_name ASC, last_name ASC');
-                } else {
-                    $members = $this->churchModel->getChurchMemberUsers($churchId);
-                }
+                $members = $this->churchModel->getAllChurchCongregation($churchId ?: null);
                 $existingMarks = $this->attendanceModel->getMarksForChurchWideService($churchId, $eventDate, $eventType);
             } else {
                 $members = $this->unitModel->getMembers($unitId);
@@ -386,8 +383,8 @@ class AttendanceController extends BaseController {
             $this->redirect('/attendance/mark');
         }
 
-        $isChurchWide = ($churchId > 0 && $unitId === 0);
-        if (!$isChurchWide && $unitId <= 0) {
+        $isChurchWide = ($unitId === 0);
+        if (!$isChurchWide && $unitId <= 0 && $churchId <= 0) {
             $this->session->setFlash('error', 'Unit or church is required.');
             $this->redirect('/attendance/mark');
         }
@@ -407,7 +404,7 @@ class AttendanceController extends BaseController {
         if (!is_array($firstTimers)) {
             $firstTimers = [];
         }
-        $effectiveChurchId = $isChurchWide ? $churchId : $this->churchModel->getChurchIdForUnit($unitId);
+        $effectiveChurchId = $isChurchWide ? ($churchId ?: null) : $this->churchModel->getChurchIdForUnit($unitId);
 
         if ($isChurchWide) {
             $this->attendanceModel->deleteForChurchWideService($churchId, $eventDate, $eventType);
@@ -419,7 +416,7 @@ class AttendanceController extends BaseController {
                 $isFirstTimer = !empty($firstTimers[$userId]) || ($status === 'present' && $effectiveChurchId && $this->attendanceModel->isFirstTimerAtChurch($userId, $effectiveChurchId, $eventDate));
                 $rows[] = [
                     'unit_id' => null,
-                    'church_id' => $churchId,
+                    'church_id' => $churchId ?: null,
                     'user_id' => $userId,
                     'event_date' => $eventDate,
                     'event_type' => $eventType,

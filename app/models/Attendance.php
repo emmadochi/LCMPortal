@@ -213,10 +213,17 @@ class Attendance extends BaseModel {
      * Returns [user_id => ['status' => 'present'|'absent', 'is_first_timer' => 0|1]]
      */
     public function getMarksForChurchWideService($churchId, $eventDate, $eventType) {
-        $sql = "SELECT user_id, status, COALESCE(is_first_timer, 0) AS is_first_timer FROM attendance 
-                WHERE church_id = ? AND unit_id IS NULL AND event_date = ? AND event_type = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("iss", $churchId, $eventDate, $eventType);
+        if ($churchId) {
+            $sql = "SELECT user_id, status, COALESCE(is_first_timer, 0) AS is_first_timer FROM attendance 
+                    WHERE church_id = ? AND unit_id IS NULL AND event_date = ? AND event_type = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param("iss", $churchId, $eventDate, $eventType);
+        } else {
+            $sql = "SELECT user_id, status, COALESCE(is_first_timer, 0) AS is_first_timer FROM attendance 
+                    WHERE unit_id IS NULL AND event_date = ? AND event_type = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param("ss", $eventDate, $eventType);
+        }
         $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $map = [];
@@ -243,9 +250,15 @@ class Attendance extends BaseModel {
      * Delete all attendance records for a church-wide service.
      */
     public function deleteForChurchWideService($churchId, $eventDate, $eventType) {
-        $sql = "DELETE FROM attendance WHERE church_id = ? AND unit_id IS NULL AND event_date = ? AND event_type = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("iss", $churchId, $eventDate, $eventType);
+        if ($churchId) {
+            $sql = "DELETE FROM attendance WHERE church_id = ? AND unit_id IS NULL AND event_date = ? AND event_type = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param("iss", $churchId, $eventDate, $eventType);
+        } else {
+            $sql = "DELETE FROM attendance WHERE unit_id IS NULL AND event_date = ? AND event_type = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param("ss", $eventDate, $eventType);
+        }
         return $stmt->execute();
     }
 
