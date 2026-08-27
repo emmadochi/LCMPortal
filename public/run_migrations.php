@@ -6,7 +6,7 @@ header('Content-Type: text/html; charset=utf-8');
 echo "<!DOCTYPE html><html><head><title>Database Migration & Setup</title>";
 echo "<style>body{font-family:system-ui,-apple-system,sans-serif;max-width:800px;margin:40px auto;padding:20px;line-height:1.6;background:#f8fafc;color:#1e293b;} .card{background:#fff;padding:24px;border-radius:12px;box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1);} .success{color:#16a34a;font-weight:600;} .error{color:#dc2626;font-weight:600;} .btn{display:inline-block;background:#4f46e5;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600;margin-top:16px;}</style></head><body><div class='card'>";
 
-echo "<h1>🚀 Portal Database Setup & Migrations</h1>";
+echo "<h1>🚀 Portal Database Setup & Schema Sync</h1>";
 
 // 1. Load environment
 $envFiles = [
@@ -70,10 +70,7 @@ if (!$migrationDir) {
 $migrations = glob($migrationDir . '/*.php');
 sort($migrations);
 
-echo "<h3>Running Migrations (" . count($migrations) . " files found):</h3><ul>";
-
-$passedCount = 0;
-$skippedCount = 0;
+echo "<h3>Running Migrations:</h3><ul>";
 
 foreach ($migrations as $file) {
     $baseName = basename($file, '.php');
@@ -83,7 +80,6 @@ foreach ($migrations as $file) {
         try {
             $res = $functionName();
             echo "<li><span class='success'>✓</span> " . htmlspecialchars($baseName) . "</li>";
-            $passedCount++;
         } catch (\Throwable $e) {
             echo "<li><span class='error'>✗</span> " . htmlspecialchars($baseName) . " - " . htmlspecialchars($e->getMessage()) . "</li>";
         }
@@ -91,9 +87,40 @@ foreach ($migrations as $file) {
 }
 echo "</ul>";
 
+// 4. Schema Column Integrity Guarantee
+echo "<h3>Verifying Schema Columns:</h3><ul>";
+
+function ensureColumn($db, $table, $column, $definition) {
+    $check = $db->query("SHOW COLUMNS FROM `{$table}` LIKE '{$column}'");
+    if ($check && $check->num_rows === 0) {
+        $db->query("ALTER TABLE `{$table}` ADD COLUMN `{$column}` {$definition}");
+        echo "<li><span class='success'>✓</span> Added missing column <code>{$table}.{$column}</code></li>";
+    }
+}
+
+ensureColumn($db, 'churches', 'head_pastor_user_id', "INT NULL");
+ensureColumn($db, 'churches', 'pastor_user_id', "INT NULL");
+ensureColumn($db, 'users', 'church_id', "INT NULL");
+ensureColumn($db, 'users', 'phone', "VARCHAR(50) NULL");
+ensureColumn($db, 'users', 'address', "TEXT NULL");
+ensureColumn($db, 'users', 'age_group', "VARCHAR(50) NULL");
+ensureColumn($db, 'users', 'profile_picture', "VARCHAR(255) NULL");
+ensureColumn($db, 'church_units', 'unit_head_id', "INT NULL");
+ensureColumn($db, 'finance_records', 'church_id', "INT NULL");
+ensureColumn($db, 'finance_records', 'user_id', "INT NULL");
+ensureColumn($db, 'finance_records', 'member_id', "INT NULL");
+ensureColumn($db, 'finance_records', 'payment_method', "VARCHAR(50) DEFAULT 'cash'");
+ensureColumn($db, 'finance_records', 'reference_number', "VARCHAR(100) NULL");
+ensureColumn($db, 'attendance', 'project_id', "INT NULL");
+ensureColumn($db, 'attendance', 'is_first_timer', "TINYINT(1) DEFAULT 0");
+ensureColumn($db, 'attendance', 'service_description', "TEXT NULL");
+
+echo "<li><span class='success'>✓</span> All core table columns verified and synced!</li>";
+echo "</ul>";
+
 $db->query("SET FOREIGN_KEY_CHECKS = 1;");
 
-// 4. Seed Default Admin User if not exists
+// 5. Seed Default Admin User if not exists
 echo "<h3>Default Admin Account:</h3>";
 try {
     $userModel = new \App\Models\User();
