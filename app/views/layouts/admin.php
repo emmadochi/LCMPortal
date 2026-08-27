@@ -164,11 +164,13 @@ use App\Utilities\AssetHelper;
                         </a>
                         <ul class="sub-menu" aria-expanded="false">
                             <?php if ($this->session->isHeadPastor()): ?>
-                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/attendance') ?>" key="t-hp-attendance-list">Dashboard</a></li>
-                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/attendance/records') ?>" key="t-hp-attendance-records">Records</a></li>
-                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/attendance/mark') ?>" key="t-hp-record-attendance">Mark Attendance</a></li>
+                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/attendance') ?>" key="t-hp-attendance-list">Dashboard & Services</a></li>
+                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/attendance/mark') ?>" key="t-hp-record-attendance">Mark Attendance (Roll-Call)</a></li>
+                            <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/attendance/records') ?>" key="t-hp-attendance-records">Attendance Ledger</a></li>
                             <?php else: ?>
-                            <li><a href="<?= AssetHelper::url('attendance/create') ?>" key="t-mark-attendance">Mark Attendance</a></li>
+                            <li><a href="<?= AssetHelper::url('attendance') ?>" key="t-attendance-dash">Dashboard & Services</a></li>
+                            <li><a href="<?= AssetHelper::url('attendance/mark') ?>" key="t-mark-attendance">Mark Attendance (Roll-Call)</a></li>
+                            <li><a href="<?= AssetHelper::url('attendance/create') ?>" key="t-record-attendance">Single Check-In</a></li>
                             <?php endif; ?>
                         </ul>
                     </li>
