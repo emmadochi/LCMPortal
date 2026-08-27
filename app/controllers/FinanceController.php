@@ -522,19 +522,67 @@ class FinanceController extends BaseModuleController
      */
     public function myRecords() {
         $userId = $this->session->get('user_id');
+        $userModel = new \App\Models\User();
+        $user = $userModel->find($userId);
         
+        $churchModel = new \App\Models\Church();
+        $church = !empty($user['church_id']) ? $churchModel->find($user['church_id']) : null;
+
         $records = $this->model->findAll([
             'member_id' => $userId,
             'transaction_type' => 'income'
         ], 'transaction_date DESC');
 
+        // Pledges summary
+        $pledgeModel = new \App\Models\Pledge();
+        $myPledges = $pledgeModel->findAll(['user_id' => $userId]) ?: [];
+        $activePledgesCount = 0;
+        $totalPledgeAmount = 0.0;
+        $totalPledgePaid = 0.0;
+        foreach ($myPledges as $p) {
+            $totalPledgeAmount += (float)$p['amount'];
+            $totalPledgePaid += (float)($p['amount_paid'] ?? 0);
+            if (($p['status'] ?? '') !== 'fulfilled') {
+                $activePledgesCount++;
+            }
+        }
+
+        // Monthly giving trends for the current year
+        $monthlyGiving = array_fill(1, 12, 0.0);
+        $categoryBreakdown = [];
+        $currentYear = date('Y');
+
+        foreach ($records as $r) {
+            $amt = (float)$r['amount'];
+            $rYear = date('Y', strtotime($r['transaction_date']));
+            $rMonth = (int)date('n', strtotime($r['transaction_date']));
+
+            if ($rYear === $currentYear) {
+                $monthlyGiving[$rMonth] += $amt;
+            }
+
+            $cat = !empty($r['category']) ? ucwords(str_replace('_', ' ', $r['category'])) : 'General Giving';
+            if (!isset($categoryBreakdown[$cat])) {
+                $categoryBreakdown[$cat] = 0.0;
+            }
+            $categoryBreakdown[$cat] += $amt;
+        }
+
         $this->render('finance/my_records', [
-            'title' => 'My Giving History',
+            'title' => 'My Giving History & Contributions',
             'pageTitle' => 'My Giving History',
             'records' => $records,
+            'user' => $user,
+            'church' => $church,
+            'activePledgesCount' => $activePledgesCount,
+            'totalPledgeAmount' => $totalPledgeAmount,
+            'totalPledgePaid' => $totalPledgePaid,
+            'monthlyGiving' => $monthlyGiving,
+            'categoryBreakdown' => $categoryBreakdown,
             'breadcrumbs' => [
-                ['label' => 'Dashboard', 'url' => '/'],
-                ['label' => 'Giving History', 'active' => true]
+                ['label' => 'Dashboard', 'url' => ''],
+                ['label' => 'Personal Space', 'url' => 'profile'],
+                ['label' => 'My Giving', 'active' => true]
             ]
         ]);
     }
