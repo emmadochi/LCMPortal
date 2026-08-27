@@ -164,11 +164,12 @@ $csrfToken = Security::generateCSRFToken();
                                                 <td>
                                                     <small class="text-muted"><?= date('M d, Y', strtotime($member['joined_at'])) ?></small>
                                                 </td>
-                                                <?php if ($userRole === 'admin' || $userRole === 'director'): ?>
+                                                <?php if ($canManage ?? false): ?>
                                                 <td>
                                                     <button class="btn btn-sm btn-outline-danger remove-member" 
                                                             data-user-id="<?= $member['id'] ?>"
-                                                            data-unit-id="<?= $unit['id'] ?>">
+                                                            data-unit-id="<?= $unit['id'] ?>"
+                                                            title="Remove from unit">
                                                         <i data-feather="x" class="icon-sm"></i>
                                                     </button>
                                                 </td>

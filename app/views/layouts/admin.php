@@ -204,17 +204,20 @@ use App\Utilities\AssetHelper;
                     <?php if ($this->session->hasPermission('manage_users') || $this->session->isHeadPastor() || $this->session->isDirector()): ?>
                     <li class="menu-title" key="t-administration">Administration</li>
 
-                    <?php if ($this->session->hasPermission('manage_users')): ?>
+                    <?php if ($this->session->hasPermission('manage_users') || $this->session->isHeadPastor()): ?>
                     <li>
                         <a href="javascript: void(0);" class="has-arrow waves-effect">
                             <i class="bx bx-user-shield"></i>
-                            <span key="t-people-security">People & Security</span>
+                            <span key="t-people-security"><?= $this->session->isHeadPastor() ? 'Members & Directory' : 'People & Security' ?></span>
                         </a>
                         <ul class="sub-menu" aria-expanded="false">
                             <li><a href="<?= AssetHelper::url('members') ?>" key="t-member-dir">Member Directory</a></li>
+                            <li><a href="<?= AssetHelper::url('members/create') ?>" key="t-add-member">Add New Member</a></li>
+                            <?php if ($this->session->hasPermission('manage_users')): ?>
                             <li><a href="<?= AssetHelper::url('users') ?>" key="t-sys-users">System Users</a></li>
                             <li><a href="<?= AssetHelper::url('admin/password-reset-requests') ?>" key="t-pw-resets">Password Requests</a></li>
                             <li><a href="<?= AssetHelper::url('activity-logs') ?>" key="t-activity">Activity Logs</a></li>
+                            <?php endif; ?>
                         </ul>
                     </li>
                     <?php endif; ?>
@@ -230,6 +233,7 @@ use App\Utilities\AssetHelper;
                             <li><a href="<?= AssetHelper::url('units') ?>" key="t-manage-units">Manage Units</a></li>
                             <?php endif; ?>
                             <?php if ($this->session->isHeadPastor()): ?>
+                            <li><a href="<?= AssetHelper::url('units') ?>" key="t-hp-units">Units & Leadership</a></li>
                             <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '#units-section') ?>" key="t-unit-mgmt">Unit Management</a></li>
                             <li><a href="<?= AssetHelper::url('churches/' . $this->session->getHeadPastorChurchId() . '/performance') ?>" key="t-perf-matrix">Performance Matrix</a></li>
                             <?php endif; ?>

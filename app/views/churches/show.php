@@ -209,14 +209,19 @@ use App\Utilities\Security;
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <form method="POST" action="<?= AssetHelper::url("churches/{$church['id']}/remove-unit") ?>" 
-                                                  class="d-inline" onsubmit="return confirm('Are you sure you want to remove this unit from the church?')">
-                                                <input type="hidden" name="_token" value="<?= $csrf_token ?>">
-                                                <input type="hidden" name="unit_id" value="<?= $unit['unit_id'] ?>">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                    <i class="bx bx-trash"></i>
-                                                </button>
-                                            </form>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <a href="<?= AssetHelper::url("units/{$unit['unit_id']}") ?>" class="btn btn-sm btn-outline-primary" title="Manage Unit Leadership & Members">
+                                                    <i class="bx bx-cog me-1"></i> Manage Unit
+                                                </a>
+                                                <form method="POST" action="<?= AssetHelper::url("churches/{$church['id']}/remove-unit") ?>" 
+                                                      class="d-inline" onsubmit="return confirm('Are you sure you want to remove this unit from the church?')">
+                                                    <input type="hidden" name="_token" value="<?= $csrf_token ?>">
+                                                    <input type="hidden" name="unit_id" value="<?= $unit['unit_id'] ?>">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove unit from branch">
+                                                        <i class="bx bx-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>

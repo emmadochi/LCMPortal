@@ -100,8 +100,8 @@ $userRole = $session->get('user_role');
                                 <td><?= date('M d, Y', strtotime($unit['created_at'])) ?></td>
                                 <td>
                                     <div class="d-flex gap-2">
-                                        <a href="<?= AssetHelper::url('units/' . $unit['id']) ?>" class="btn btn-sm btn-outline-primary">
-                                            <i data-feather="eye" class="icon-sm"></i>
+                                        <a href="<?= AssetHelper::url('units/' . $unit['id']) ?>" class="btn btn-sm btn-outline-primary" title="View & Manage Unit Leadership">
+                                            <i data-feather="eye" class="icon-sm"></i> Manage
                                         </a>
                                         <?php if ($userRole === 'admin'): ?>
                                             <a href="<?= AssetHelper::url('units/' . $unit['id'] . '/edit') ?>" class="btn btn-sm btn-outline-secondary">

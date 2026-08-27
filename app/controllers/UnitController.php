@@ -22,12 +22,19 @@ class UnitController extends BaseController {
     }
 
     /**
-     * Check if user is admin or director of specific unit
+     * Check if user is admin, head pastor of associated church, or director of specific unit
      */
     private function canAccessUnit($unitId) {
         // Admin has full access
-        if ($this->session->hasPermission('manage_units')) {
+        if ($this->session->hasPermission('manage_units') || $this->session->get('user_role') === 'admin') {
             return true;
+        }
+        
+        // Head pastor can access units belonging to their church branch
+        if ($this->session->isHeadPastor()) {
+            $churchModel = new \App\Models\Church();
+            $churchUnits = $churchModel->getChurchUnitIds($this->session->getHeadPastorChurchId());
+            return in_array((int)$unitId, array_map('intval', $churchUnits));
         }
         
         // Director can access their assigned units
@@ -39,7 +46,24 @@ class UnitController extends BaseController {
     }
 
     /**
-     * Check if user can manage units (admin only)
+     * Check if user can manage unit leadership and members
+     */
+    private function canManageUnit($unitId) {
+        if ($this->session->hasPermission('manage_units') || $this->session->get('user_role') === 'admin') {
+            return true;
+        }
+        
+        if ($this->session->isHeadPastor()) {
+            $churchModel = new \App\Models\Church();
+            $churchUnits = $churchModel->getChurchUnitIds($this->session->getHeadPastorChurchId());
+            return in_array((int)$unitId, array_map('intval', $churchUnits));
+        }
+        
+        return false;
+    }
+
+    /**
+     * Check if user can manage global unit configurations (admin only)
      */
     private function requireManagePermission() {
         $this->authorize('manage_units');
@@ -61,12 +85,27 @@ class UnitController extends BaseController {
             $conditions['status'] = $status;
         }
         
-        // Check if user is admin or director
-        $isAdmin = $this->session->hasPermission('manage_units');
+        // Check roles
+        $isAdmin = $this->session->hasPermission('manage_units') || $this->session->get('user_role') === 'admin';
+        $isHeadPastor = $this->session->isHeadPastor();
         $isDirector = $this->session->isDirector();
         
         // Get units based on role
-        if ($myUnits && $isDirector) {
+        if ($isHeadPastor) {
+            $churchModel = new \App\Models\Church();
+            $headPastorChurchId = $this->session->getHeadPastorChurchId();
+            $churchUnits = $churchModel->getChurchUnits($headPastorChurchId);
+            $unitIds = array_column($churchUnits, 'unit_id');
+            
+            if (!empty($unitIds)) {
+                $allUnits = $this->unitModel->findAll($conditions, 'name ASC');
+                $units = array_filter($allUnits, function($unit) use ($unitIds) {
+                    return in_array($unit['id'], $unitIds);
+                });
+            } else {
+                $units = [];
+            }
+        } elseif ($myUnits && $isDirector) {
             // Show only director's units
             $directorUnits = $this->session->getDirectorUnits();
             $unitIds = array_column($directorUnits, 'id');
@@ -113,11 +152,11 @@ class UnitController extends BaseController {
         
         $this->render('units/index', [
             'title' => 'Units',
-            'pageTitle' => 'Units',
+            'pageTitle' => $isHeadPastor ? 'Branch Units & Leadership' : 'Units',
             'units' => $units,
             'search' => $search,
             'status' => $status,
-            'showMyUnitsFilter' => $isDirector && !$isAdmin,
+            'showMyUnitsFilter' => $isDirector && !$isAdmin && !$isHeadPastor,
             'isMyUnitsView' => $myUnits && $isDirector
         ]);
     }
@@ -128,7 +167,7 @@ class UnitController extends BaseController {
     public function show($id) {
         // Check if user can access this unit
         if (!$this->canAccessUnit($id)) {
-            $this->session->setFlash('error', 'Access denied. You can only view units you are assigned to direct.');
+            $this->session->setFlash('error', 'Access denied. You can only view units you are assigned to direct or manage.');
             $this->redirect('/units');
             return;
         }
@@ -143,11 +182,15 @@ class UnitController extends BaseController {
         $members = $this->unitModel->getMembers($id);
         $directors = $this->unitModel->getDirectors($id);
         $statistics = $this->unitModel->getStatistics($id);
+        $canManage = $this->canManageUnit($id);
         
-        // Get all users for assignment dropdowns (only for admins)
+        // Get users for assignment dropdowns
         $allUsers = [];
-        if ($this->session->hasPermission('manage_units')) {
+        if ($this->session->hasPermission('manage_units') || $this->session->get('user_role') === 'admin') {
             $allUsers = $this->userModel->findAll(['status' => 'active'], 'first_name, last_name');
+        } elseif ($this->session->isHeadPastor()) {
+            $churchModel = new \App\Models\Church();
+            $allUsers = $churchModel->getAllChurchCongregation($this->session->getHeadPastorChurchId());
         }
         
         $this->render('units/show', [
@@ -158,7 +201,7 @@ class UnitController extends BaseController {
             'directors' => $directors,
             'statistics' => $statistics,
             'allUsers' => $allUsers,
-            'canManage' => $this->session->hasPermission('manage_units'),
+            'canManage' => $canManage,
             'breadcrumbs' => [
                 ['label' => 'Units', 'url' => '/units'],
                 ['label' => $unit['name'], 'active' => true]
@@ -352,15 +395,18 @@ class UnitController extends BaseController {
      * Assign member to unit (AJAX)
      */
     public function assignMember() {
-        // Admin only
-        $this->requireManagePermission();
-        
         $unitId = (int)$this->request->post('unit_id');
         $userId = (int)$this->request->post('user_id');
         $role = $this->request->post('role', 'member');
 
         if (!$unitId || !$userId) {
             $this->json(['success' => false, 'message' => 'Invalid parameters'], 400);
+            return;
+        }
+
+        if (!$this->canManageUnit($unitId)) {
+            $this->json(['success' => false, 'message' => 'Access denied. You do not have permission to manage this unit.'], 403);
+            return;
         }
 
         if ($this->unitModel->assignMember($unitId, $userId, $role)) {
@@ -372,7 +418,7 @@ class UnitController extends BaseController {
                 'assign',
                 'Unit',
                 $unitId,
-                "Assigned member {$user['first_name']} {$user['last_name']} to unit {$unit['name']}"
+                "Assigned member {$user['first_name']} {$user['last_name']} (Role: {$role}) to unit {$unit['name']}"
             );
             
             $this->json(['success' => true, 'message' => 'Member assigned successfully']);
@@ -385,14 +431,17 @@ class UnitController extends BaseController {
      * Remove member from unit (AJAX)
      */
     public function removeMember() {
-        // Admin only
-        $this->requireManagePermission();
-        
         $unitId = (int)$this->request->post('unit_id');
         $userId = (int)$this->request->post('user_id');
 
         if (!$unitId || !$userId) {
             $this->json(['success' => false, 'message' => 'Invalid parameters'], 400);
+            return;
+        }
+
+        if (!$this->canManageUnit($unitId)) {
+            $this->json(['success' => false, 'message' => 'Access denied. You do not have permission to manage this unit.'], 403);
+            return;
         }
 
         if ($this->unitModel->removeMember($unitId, $userId)) {
@@ -417,14 +466,17 @@ class UnitController extends BaseController {
      * Assign director to unit (AJAX)
      */
     public function assignDirector() {
-        // Admin only
-        $this->requireManagePermission();
-        
         $unitId = (int)$this->request->post('unit_id');
         $userId = (int)$this->request->post('user_id');
 
         if (!$unitId || !$userId) {
             $this->json(['success' => false, 'message' => 'Invalid parameters'], 400);
+            return;
+        }
+
+        if (!$this->canManageUnit($unitId)) {
+            $this->json(['success' => false, 'message' => 'Access denied. You do not have permission to manage this unit.'], 403);
+            return;
         }
 
         if ($this->unitModel->assignDirector($unitId, $userId)) {
@@ -449,14 +501,17 @@ class UnitController extends BaseController {
      * Remove director from unit (AJAX)
      */
     public function removeDirector() {
-        // Admin only
-        $this->requireManagePermission();
-        
         $unitId = (int)$this->request->post('unit_id');
         $userId = (int)$this->request->post('user_id');
 
         if (!$unitId || !$userId) {
             $this->json(['success' => false, 'message' => 'Invalid parameters'], 400);
+            return;
+        }
+
+        if (!$this->canManageUnit($unitId)) {
+            $this->json(['success' => false, 'message' => 'Access denied. You do not have permission to manage this unit.'], 403);
+            return;
         }
 
         if ($this->unitModel->removeDirector($unitId, $userId)) {
