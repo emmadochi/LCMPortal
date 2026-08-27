@@ -27,12 +27,18 @@ class Request {
             $uri = substr($uri, strlen($basePath));
         }
 
+        // Strip /index.php from beginning if present (e.g. /index.php or /index.php/dashboard)
+        if (strpos($uri, '/index.php') === 0) {
+            $uri = substr($uri, 10);
+        }
+
         if ($uri === '' || $uri === false) {
             $uri = '/';
         }
 
         return $uri !== '/' ? rtrim($uri, '/') : '/';
     }
+
 
     public function isGet() {
         return $this->method() === 'GET';
