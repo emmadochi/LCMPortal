@@ -58,14 +58,272 @@ $greeting  = (int)date('H') < 12 ? 'Good Morning' : ((int)date('H') < 17 ? 'Good
 ?>
 
 
+<style>
+/* Dashboard Styles Guaranteed */
+:root {
+    --db-bg: #f8fafc;
+    --db-surface: #ffffff;
+    --db-border: #e2e8f0;
+    --db-text: #1e293b;
+    --db-muted: #64748b;
+    --db-radius: 16px;
+    --db-radius-sm: 10px;
+    --db-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    --db-shadow-lg: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.db-page {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    padding-bottom: 30px;
+}
+
+/* Hero Banner */
+.db-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+    border-radius: var(--db-radius);
+    padding: 30px 32px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+    color: #fff;
+    box-shadow: 0 10px 25px rgba(30, 27, 75, 0.25);
+}
+.db-hero::before {
+    content: '';
+    position: absolute; top: -70px; right: -70px;
+    width: 240px; height: 240px;
+    background: radial-gradient(circle, rgba(99,102,241,0.25) 0%, rgba(255,255,255,0) 70%);
+    border-radius: 50%;
+}
+.db-hero-greeting {
+    font-size: 0.78rem; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: rgba(255,255,255,0.7); margin-bottom: 4px;
+    display: flex; align-items: center; gap: 6px;
+}
+.db-hero-name {
+    font-size: 1.85rem; font-weight: 800;
+    color: #fff; letter-spacing: -0.5px;
+    margin-bottom: 4px; line-height: 1.2;
+}
+.db-hero-sub {
+    font-size: 0.85rem; color: rgba(255,255,255,0.75);
+    margin-bottom: 0;
+}
+.db-hero-date {
+    font-size: 0.78rem; color: rgba(255,255,255,0.5);
+    margin-top: 4px;
+}
+.db-role-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 0.75rem; font-weight: 600;
+    color: #fff;
+    backdrop-filter: blur(8px);
+}
+.db-hero-stats {
+    display: flex; gap: 20px; flex-wrap: wrap;
+    background: rgba(255,255,255,0.07);
+    padding: 16px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(10px);
+}
+.db-hero-stat {
+    display: flex; flex-direction: column;
+}
+.db-hero-stat-val {
+    font-size: 1.5rem; font-weight: 800;
+    color: #fff; line-height: 1.1;
+}
+.db-hero-stat-lbl {
+    font-size: 0.68rem; font-weight: 600;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    color: rgba(255,255,255,0.6); margin-top: 4px;
+}
+.db-hero-divider {
+    width: 1px; background: rgba(255,255,255,0.15);
+    margin: 0 4px; align-self: stretch;
+}
+.live-dot {
+    width: 8px; height: 8px; background: #22c55e;
+    border-radius: 50%; display: inline-block;
+    box-shadow: 0 0 8px #22c55e;
+}
+
+/* KPI Cards */
+.db-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px; margin-bottom: 24px;
+}
+@media (max-width:1100px) { .db-kpi-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width:580px)  { .db-kpi-grid { grid-template-columns: 1fr; } }
+
+.db-kpi {
+    background: #ffffff;
+    border-radius: var(--db-radius);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    padding: 20px 20px 16px;
+    position: relative; overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid #e2e8f0;
+}
+.db-kpi:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,0.08); }
+.db-kpi-accent {
+    position: absolute; top:0; left:0; right:0;
+    height: 4px;
+}
+.db-kpi-bg-icon {
+    position: absolute; right: 12px; bottom: 12px;
+    font-size: 3rem; opacity: 0.12; line-height: 1; pointer-events: none;
+}
+.db-kpi-label {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: #64748b; margin-bottom: 6px;
+}
+.db-kpi-value {
+    font-size: 2.2rem; font-weight: 800; line-height: 1.1;
+    color: #0f172a; margin-bottom: 4px;
+}
+.db-kpi-sub { font-size: 0.75rem; color: #64748b; font-weight: 500; }
+.db-kpi-icon-wrap {
+    width: 42px; height: 42px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; margin-bottom: 12px;
+}
+
+.kpi-units .db-kpi-accent   { background: linear-gradient(90deg,#4f46e5,#818cf8); }
+.kpi-units .db-kpi-icon-wrap { background:#eef2ff; color:#4f46e5; }
+
+.kpi-users .db-kpi-accent   { background: linear-gradient(90deg,#10b981,#34d399); }
+.kpi-users .db-kpi-icon-wrap { background:#ecfdf5; color:#10b981; }
+
+.kpi-reports .db-kpi-accent   { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
+.kpi-reports .db-kpi-icon-wrap { background:#fffbeb; color:#f59e0b; }
+
+.kpi-attendance .db-kpi-accent   { background: linear-gradient(90deg,#f43f5e,#fb7185); }
+.kpi-attendance .db-kpi-icon-wrap { background:#fff1f2; color:#f43f5e; }
+
+/* Panels */
+.db-panel {
+    background: #ffffff;
+    border-radius: var(--db-radius);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+}
+.db-panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #f1f5f9;
+}
+.db-panel-title {
+    font-size: 0.92rem; font-weight: 700; color: #0f172a;
+    display: flex; align-items: center; gap: 8px; margin: 0;
+}
+.db-panel-title span {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; font-size: 1rem;
+}
+.pi-blue   { background:#eef2ff; color:#4f46e5; }
+.pi-green  { background:#ecfdf5; color:#10b981; }
+.pi-amber  { background:#fffbeb; color:#f59e0b; }
+.pi-rose   { background:#fff1f2; color:#f43f5e; }
+.pi-violet { background:#f5f3ff; color:#7c3aed; }
+.pi-cyan   { background:#ecfeff; color:#0891b2; }
+.pi-orange { background:#fff7ed; color:#ea580c; }
+.pi-slate  { background:#f8fafc; color:#475569; }
+
+.db-panel-body { padding: 18px 20px; }
+.db-panel-flush { padding: 0; }
+
+/* Quick Actions */
+.db-quick-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+@media (max-width:900px) { .db-quick-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width:480px)  { .db-quick-grid { grid-template-columns: 1fr; } }
+
+.db-quick-btn {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; padding: 16px 12px;
+    border-radius: 12px;
+    text-decoration: none !important;
+    font-size: 0.82rem; font-weight: 600;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+.db-quick-btn i { font-size: 1.5rem; }
+.db-quick-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 16px rgba(0,0,0,0.08); }
+
+.qb-indigo { background: #eef2ff; color: #4338ca !important; }
+.qb-green  { background: #ecfdf5; color: #065f46 !important; }
+.qb-amber  { background: #fffbeb; color: #92400e !important; }
+.qb-rose   { background: #fff1f2; color: #9f1239 !important; }
+.qb-violet { background: #f5f3ff; color: #6b21a8 !important; }
+.qb-cyan   { background: #ecfeff; color: #155e75 !important; }
+.qb-orange { background: #fff7ed; color: #9a3412 !important; }
+.qb-slate  { background: #f1f5f9; color: #334155 !important; }
+
+/* Tables */
+.db-table { width: 100%; border-collapse: collapse; }
+.db-table thead th {
+    font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.05em; color: #64748b; background: #f8fafc;
+    padding: 10px 18px; border-bottom: 1px solid #e2e8f0;
+}
+.db-table tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.15s; }
+.db-table tbody tr:hover { background: #f8fafc; }
+.db-table td { padding: 12px 18px; font-size: 0.85rem; color: #1e293b; vertical-align: middle; }
+
+/* Activity & Badges */
+.db-activity-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 20px; border-bottom: 1px solid #f1f5f9;
+}
+.db-activity-dot {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem; flex-shrink: 0;
+}
+.db-activity-text { font-size: 0.85rem; color: #1e293b; }
+.db-activity-time { font-size: 0.72rem; color: #94a3b8; margin-top: 2px; }
+
+.db-panel-badge {
+    font-size: 0.72rem; font-weight: 600;
+    padding: 3px 9px; border-radius: 12px;
+    background: #f1f5f9; color: #475569;
+}
+.fu-urgent { background:#fee2e2; color:#b91c1c; }
+.fu-high   { background:#fef3c7; color:#92400e; }
+.fu-medium { background:#dbeafe; color:#1e40af; }
+.fu-low    { background:#f1f5f9; color:#475569; }
+
+.net-positive { color: #22c55e !important; }
+.net-negative { color: #f43f5e !important; }
+
+.db-empty {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 36px 16px; color: #94a3b8; text-align: center;
+}
+.db-empty i { font-size: 2rem; margin-bottom: 8px; opacity: 0.5; }
+.db-empty p { font-size: 0.85rem; margin: 0; }
+</style>
+
 <div class="db-page">
 
     <!-- ── Hero Welcome Banner ── -->
-    <div class="db-hero mb-4" style="position:relative; z-index:1;">
-        <div class="row align-items-center" style="position:relative; z-index:1;">
+    <div class="db-hero mb-4">
+        <div class="row align-items-center">
             <div class="col-md-8">
                 <div class="db-hero-greeting">
-                    <span class="live-dot me-1"></span>
+                    <span class="live-dot"></span>
                     <?= $greeting ?>
                 </div>
                 <div class="db-hero-name"><?= htmlspecialchars($userName) ?> 👋</div>
@@ -528,10 +786,8 @@ $greeting  = (int)date('H') < 12 ? 'Good Morning' : ((int)date('H') < 17 ? 'Good
 
 </div><!-- /.db-page -->
 
-<?php ob_start(); ?>
-<script src="<?= AssetHelper::lib('chart.js/chart.umd.js') ?>"></script>
 <script>
-(function() {
+document.addEventListener('DOMContentLoaded', function() {
     'use strict';
 
     // ── Count-up ──────────────────────────────────────
@@ -546,6 +802,8 @@ $greeting  = (int)date('H') < 12 ? 'Good Morning' : ((int)date('H') < 17 ? 'Good
             if (cur >= target) clearInterval(t);
         }, step);
     });
+
+    if (typeof Chart === 'undefined') return;
 
     const fontFamily = "'Inter', sans-serif";
     const tooltipDefaults = {
@@ -565,8 +823,8 @@ $greeting  = (int)date('H') < 12 ? 'Good Morning' : ((int)date('H') < 17 ? 'Good
 
         const ctx = trendCtx.getContext('2d');
         const gR = ctx.createLinearGradient(0,0,0,220);
-        gR.addColorStop(0, 'rgba(99,102,241,.22)');
-        gR.addColorStop(1, 'rgba(99,102,241,.01)');
+        gR.addColorStop(0, 'rgba(79,70,229,.22)');
+        gR.addColorStop(1, 'rgba(79,70,229,.01)');
         const gA = ctx.createLinearGradient(0,0,0,220);
         gA.addColorStop(0, 'rgba(245,158,11,.2)');
         gA.addColorStop(1, 'rgba(245,158,11,.01)');
@@ -574,10 +832,10 @@ $greeting  = (int)date('H') < 12 ? 'Good Morning' : ((int)date('H') < 17 ? 'Good
         new Chart(trendCtx, {
             type: 'line',
             data: {
-                labels: labels,
+                labels: labels.length ? labels : ['Jan','Feb','Mar','Apr','May','Jun'],
                 datasets: [
-                    { label:'Reports', data:<?= $reportsData ?>, borderColor:'#6366f1', backgroundColor:gR, fill:true, tension:.4, borderWidth:2.5, pointRadius:4, pointHoverRadius:7, pointBackgroundColor:'#6366f1' },
-                    { label:'Attendance', data:<?= $attendanceData ?>, borderColor:'#f59e0b', backgroundColor:gA, fill:true, tension:.4, borderWidth:2.5, pointRadius:4, pointHoverRadius:7, pointBackgroundColor:'#f59e0b' },
+                    { label:'Reports', data:<?= !empty($reportsData) && $reportsData !== '[]' ? $reportsData : '[0,0,0,0,0,0]' ?>, borderColor:'#4f46e5', backgroundColor:gR, fill:true, tension:.4, borderWidth:2.5, pointRadius:4, pointHoverRadius:7, pointBackgroundColor:'#4f46e5' },
+                    { label:'Attendance', data:<?= !empty($attendanceData) && $attendanceData !== '[]' ? $attendanceData : '[0,0,0,0,0,0]' ?>, borderColor:'#f59e0b', backgroundColor:gA, fill:true, tension:.4, borderWidth:2.5, pointRadius:4, pointHoverRadius:7, pointBackgroundColor:'#f59e0b' },
                 ]
             },
             options: {
@@ -597,11 +855,13 @@ $greeting  = (int)date('H') < 12 ? 'Good Morning' : ((int)date('H') < 17 ? 'Good
     // ── Finance Doughnut ──────────────────────────────
     const donutCtx = document.getElementById('financeDonut');
     if (donutCtx) {
+        const inc = <?= $financeSummaryIncome ?>;
+        const exp = <?= $financeSummaryExpense ?>;
         new Chart(donutCtx, {
             type: 'doughnut',
             data: {
                 labels: ['Income','Expenses'],
-                datasets: [{ data:[<?= $financeSummaryIncome ?>,<?= $financeSummaryExpense ?>], backgroundColor:['#10b981','#f43f5e'], borderWidth:3, borderColor:'#fff' }]
+                datasets: [{ data: (inc === 0 && exp === 0) ? [1, 0] : [inc, exp], backgroundColor: (inc === 0 && exp === 0) ? ['#e2e8f0', '#f1f5f9'] : ['#10b981','#f43f5e'], borderWidth:3, borderColor:'#fff' }]
             },
             options: {
                 cutout:'70%',
@@ -619,10 +879,10 @@ $greeting  = (int)date('H') < 12 ? 'Good Morning' : ((int)date('H') < 17 ? 'Good
         new Chart(barCtx, {
             type: 'bar',
             data: {
-                labels: <?= $financeLabels ?>,
+                labels: <?= !empty($financeLabels) && $financeLabels !== '[]' ? $financeLabels : '["Jan","Feb","Mar","Apr","May","Jun"]' ?>,
                 datasets: [
-                    { label:'Income',   data:<?= $financeIncome ?>,  backgroundColor:'rgba(16,185,129,.8)',  borderRadius:7, borderSkipped:false },
-                    { label:'Expenses', data:<?= $financeExpense ?>, backgroundColor:'rgba(244,63,94,.75)', borderRadius:7, borderSkipped:false }
+                    { label:'Income',   data:<?= !empty($financeIncome) && $financeIncome !== '[]' ? $financeIncome : '[0,0,0,0,0,0]' ?>,  backgroundColor:'rgba(16,185,129,.85)',  borderRadius:6, borderSkipped:false },
+                    { label:'Expenses', data:<?= !empty($financeExpense) && $financeExpense !== '[]' ? $financeExpense : '[0,0,0,0,0,0]' ?>, backgroundColor:'rgba(244,63,94,.8)', borderRadius:6, borderSkipped:false }
                 ]
             },
             options: {
@@ -639,6 +899,5 @@ $greeting  = (int)date('H') < 12 ? 'Good Morning' : ((int)date('H') < 17 ? 'Good
         });
     }
 
-})();
+});
 </script>
-<?php $pageJs = ob_get_clean(); ?>

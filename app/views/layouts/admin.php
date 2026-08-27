@@ -14,8 +14,13 @@ use App\Utilities\AssetHelper;
     <!-- App favicon -->
     <link rel="shortcut icon" href="<?= AssetHelper::image('favicon.ico') ?>">
     
-    <!-- preloader css -->
-    <link rel="stylesheet" href="<?= AssetHelper::css('preloader.min.css') ?>" type="text/css" />
+    <!-- Google Font: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Boxicons CDN Fallback -->
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     
     <!-- Bootstrap Css -->
     <link href="<?= AssetHelper::css('bootstrap.min.css') ?>" id="bootstrap-style" rel="stylesheet" type="text/css" />
@@ -39,12 +44,15 @@ use App\Utilities\AssetHelper;
     
     <!-- Custom CSS -->
     <style>
+        body, .main-content, .page-content {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+        }
         .sidebar-menu li.mm-active > a {
-            color: #556ee6 !important;
-            background-color: rgba(85, 110, 230, 0.1) !important;
+            color: #4f46e5 !important;
+            background-color: rgba(79, 70, 229, 0.08) !important;
         }
         .sidebar-menu li.mm-active .has-arrow:after {
-            color: #556ee6 !important;
+            color: #4f46e5 !important;
         }
     </style>
 </head>
@@ -398,6 +406,9 @@ use App\Utilities\AssetHelper;
 
 <!-- Password addon init -->
 <script src="<?= AssetHelper::js('pages/pass-addon.init.js') ?>"></script>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <!-- App js -->
 <script src="<?= AssetHelper::js('app.js') ?>"></script>
