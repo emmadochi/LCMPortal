@@ -10,7 +10,10 @@ class Database {
     private function __construct() {
         $config = require __DIR__ . '/../../config/database.php';
         
-        $this->connection = new mysqli(
+        // Turn off automatic exceptions to catch connect errors cleanly
+        mysqli_report(MYSQLI_REPORT_OFF);
+
+        $this->connection = @new mysqli(
             $config['host'],
             $config['username'],
             $config['password'],
@@ -18,10 +21,10 @@ class Database {
         );
 
         if ($this->connection->connect_error) {
-            die("Connection failed: " . $this->connection->connect_error);
+            die("Database Connection Error: " . htmlspecialchars($this->connection->connect_error) . " (Host: {$config['host']}, DB: {$config['database']}, User: {$config['username']})");
         }
 
-        $this->connection->set_charset("utf8mb4");
+        $this->connection->set_charset($config['charset'] ?? "utf8mb4");
     }
 
     public static function getInstance() {
@@ -39,4 +42,3 @@ class Database {
         throw new \Exception("Cannot unserialize singleton");
     }
 }
-
