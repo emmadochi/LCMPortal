@@ -269,7 +269,7 @@ $churchCount  = count($church_breakdown ?? []);
                     </div>
                 </div>
                 <div class="fin-value text-success">
-                    ₦<?= number_format($totalIncome, 2) ?>
+                    ₦<?= number_format(round($totalIncome)) ?>
                 </div>
                 <div class="fin-subtext">
                     <span class="fin-badge fin-badge-success">
@@ -291,7 +291,7 @@ $churchCount  = count($church_breakdown ?? []);
                     </div>
                 </div>
                 <div class="fin-value text-danger">
-                    ₦<?= number_format($totalExpense, 2) ?>
+                    ₦<?= number_format(round($totalExpense)) ?>
                 </div>
                 <div class="fin-subtext">
                     <span class="fin-badge fin-badge-danger">
@@ -313,7 +313,7 @@ $churchCount  = count($church_breakdown ?? []);
                     </div>
                 </div>
                 <div class="fin-value <?= $netBalance >= 0 ? 'text-primary' : 'text-danger' ?>">
-                    ₦<?= number_format($netBalance, 2) ?>
+                    ₦<?= number_format(round($netBalance)) ?>
                 </div>
                 <div class="fin-subtext">
                     <?php if ($netBalance >= 0): ?>
@@ -389,10 +389,10 @@ $churchCount  = count($church_breakdown ?? []);
                                             <div class="small text-muted"><?= htmlspecialchars($c['city'] ?? '') ?></div>
                                         </td>
                                         <td class="text-end text-success fw-semibold">
-                                            ₦<?= number_format($cInc, 2) ?>
+                                            ₦<?= number_format(round($cInc)) ?>
                                         </td>
                                         <td class="text-end fw-bold <?= $cNet >= 0 ? 'text-primary' : 'text-danger' ?>">
-                                            ₦<?= number_format($cNet, 2) ?>
+                                            ₦<?= number_format(round($cNet)) ?>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -467,7 +467,7 @@ $churchCount  = count($church_breakdown ?? []);
                                     </span>
                                 </td>
                                 <td class="text-end fw-bold fs-6 <?= $isInc ? 'text-success' : 'text-danger' ?>">
-                                    <?= $isInc ? '+' : '-' ?>₦<?= number_format($r['amount'], 2) ?>
+                                    <?= $isInc ? '+' : '-' ?>₦<?= number_format(round($r['amount'])) ?>
                                 </td>
                                 <td class="text-center">
                                     <span class="fin-badge <?= $isInc ? 'fin-badge-success' : 'fin-badge-danger' ?>">

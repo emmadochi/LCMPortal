@@ -187,7 +187,7 @@ use App\Utilities\AssetHelper;
                     </div>
                 </div>
                 <div class="fin-value text-primary">
-                    ₦<?= number_format($summary['total_budgeted'], 2) ?>
+                    ₦<?= number_format(round($summary['total_budgeted'])) ?>
                 </div>
                 <div class="fin-subtext">
                     <i class="bx bx-calendar text-muted me-1"></i> Fiscal Year <?= $selectedYear ?>
@@ -206,7 +206,7 @@ use App\Utilities\AssetHelper;
                     </div>
                 </div>
                 <div class="fin-value text-danger">
-                    ₦<?= number_format($summary['total_spent'], 2) ?>
+                    ₦<?= number_format(round($summary['total_spent'])) ?>
                 </div>
                 <div class="fin-subtext">
                     <i class="bx bx-receipt text-muted me-1"></i> Spent across active allocations
@@ -225,7 +225,7 @@ use App\Utilities\AssetHelper;
                     </div>
                 </div>
                 <div class="fin-value text-success">
-                    ₦<?= number_format($summary['remaining'], 2) ?>
+                    ₦<?= number_format(round($summary['remaining'])) ?>
                 </div>
                 <div class="fin-subtext">
                     <i class="bx bx-shield-quarter text-muted me-1"></i> Available for disbursement
@@ -360,11 +360,11 @@ use App\Utilities\AssetHelper;
                                         <div class="small text-muted"><?= date('M d', strtotime($b['start_date'])) ?> - <?= date('M d, Y', strtotime($b['end_date'])) ?></div>
                                     </td>
                                     <td class="text-end fw-bold text-dark">
-                                        ₦<?= number_format($b['total_budget_amount'], 2) ?>
+                                        ₦<?= number_format(round($b['total_budget_amount'])) ?>
                                     </td>
                                     <td class="text-end fw-bold text-danger">
-                                        ₦<?= number_format($b['actual_spent'], 2) ?>
-                                        <div class="small text-muted">Rem: ₦<?= number_format($b['remaining_amount'], 2) ?></div>
+                                        ₦<?= number_format(round($b['actual_spent'])) ?>
+                                        <div class="small text-muted">Rem: ₦<?= number_format(round($b['remaining_amount'])) ?></div>
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center justify-content-between mb-1 small">

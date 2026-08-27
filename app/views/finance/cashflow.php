@@ -209,7 +209,7 @@ $netData = array_map(function($m) { return round($m['net_cashflow'], 2); }, $mon
                     </div>
                 </div>
                 <div class="fin-value text-success">
-                    ₦<?= number_format($cashflow['total_inflow'], 2) ?>
+                    ₦<?= number_format(round($cashflow['total_inflow'])) ?>
                 </div>
                 <div class="fin-subtext">
                     YoY Growth: <strong class="<?= $yoy['income_growth_pct'] >= 0 ? 'text-success' : 'text-danger' ?>"><?= ($yoy['income_growth_pct'] >= 0 ? '+' : '') . $yoy['income_growth_pct'] ?>%</strong> vs <?= $yoy['previous_year'] ?>
@@ -228,7 +228,7 @@ $netData = array_map(function($m) { return round($m['net_cashflow'], 2); }, $mon
                     </div>
                 </div>
                 <div class="fin-value text-danger">
-                    ₦<?= number_format($cashflow['total_outflow'], 2) ?>
+                    ₦<?= number_format(round($cashflow['total_outflow'])) ?>
                 </div>
                 <div class="fin-subtext">
                     Expense Change: <strong class="<?= $yoy['expense_growth_pct'] <= 0 ? 'text-success' : 'text-danger' ?>"><?= ($yoy['expense_growth_pct'] >= 0 ? '+' : '') . $yoy['expense_growth_pct'] ?>%</strong> vs <?= $yoy['previous_year'] ?>
@@ -247,7 +247,7 @@ $netData = array_map(function($m) { return round($m['net_cashflow'], 2); }, $mon
                     </div>
                 </div>
                 <div class="fin-value <?= $cashflow['net_annual_cashflow'] >= 0 ? 'text-primary' : 'text-danger' ?>">
-                    ₦<?= number_format($cashflow['net_annual_cashflow'], 2) ?>
+                    ₦<?= number_format(round($cashflow['net_annual_cashflow'])) ?>
                 </div>
                 <div class="fin-subtext">
                     Net Growth: <strong class="<?= $yoy['net_growth_pct'] >= 0 ? 'text-success' : 'text-danger' ?>"><?= ($yoy['net_growth_pct'] >= 0 ? '+' : '') . $yoy['net_growth_pct'] ?>%</strong>
@@ -317,18 +317,18 @@ $netData = array_map(function($m) { return round($m['net_cashflow'], 2); }, $mon
                         <tr style="background: #f0fdf4;">
                             <td class="ps-3 fw-bold text-success"><i class="bx bx-plus-circle me-1"></i> Operating Inflows (Income)</td>
                             <?php foreach ($months as $m): ?>
-                                <td class="text-end fw-semibold text-success">₦<?= number_format($m['operating_inflows'], 2) ?></td>
+                                <td class="text-end fw-semibold text-success">₦<?= number_format(round($m['operating_inflows'])) ?></td>
                             <?php endforeach; ?>
-                            <td class="text-end fw-bold bg-light text-success">₦<?= number_format($cashflow['total_inflow'], 2) ?></td>
+                            <td class="text-end fw-bold bg-light text-success">₦<?= number_format(round($cashflow['total_inflow'])) ?></td>
                         </tr>
 
                         <!-- Outflows Row -->
                         <tr style="background: #fff1f2;">
                             <td class="ps-3 fw-bold text-danger"><i class="bx bx-minus-circle me-1"></i> Operating Outflows (Expenses)</td>
                             <?php foreach ($months as $m): ?>
-                                <td class="text-end fw-semibold text-danger">₦<?= number_format($m['operating_outflows'], 2) ?></td>
+                                <td class="text-end fw-semibold text-danger">₦<?= number_format(round($m['operating_outflows'])) ?></td>
                             <?php endforeach; ?>
-                            <td class="text-end fw-bold bg-light text-danger">₦<?= number_format($cashflow['total_outflow'], 2) ?></td>
+                            <td class="text-end fw-bold bg-light text-danger">₦<?= number_format(round($cashflow['total_outflow'])) ?></td>
                         </tr>
 
                         <!-- Net Monthly Cashflow -->
@@ -336,10 +336,10 @@ $netData = array_map(function($m) { return round($m['net_cashflow'], 2); }, $mon
                             <td class="ps-3 text-primary"><i class="bx bx-wallet me-1"></i> Net Monthly Cashflow</td>
                             <?php foreach ($months as $m): ?>
                                 <td class="text-end <?= $m['net_cashflow'] >= 0 ? 'text-success' : 'text-danger' ?>">
-                                    ₦<?= number_format($m['net_cashflow'], 2) ?>
+                                    ₦<?= number_format(round($m['net_cashflow'])) ?>
                                 </td>
                             <?php endforeach; ?>
-                            <td class="text-end bg-light text-primary fs-6">₦<?= number_format($cashflow['net_annual_cashflow'], 2) ?></td>
+                            <td class="text-end bg-light text-primary fs-6">₦<?= number_format(round($cashflow['net_annual_cashflow'])) ?></td>
                         </tr>
 
                         <!-- Cumulative Cash Balance -->
@@ -347,10 +347,10 @@ $netData = array_map(function($m) { return round($m['net_cashflow'], 2); }, $mon
                             <td class="ps-3 fw-bold text-dark"><i class="bx bx-wallet-alt me-1"></i> Cumulative Year-to-Date Balance</td>
                             <?php foreach ($months as $m): ?>
                                 <td class="text-end fw-bold <?= $m['closing_balance'] >= 0 ? 'text-primary' : 'text-danger' ?>">
-                                    ₦<?= number_format($m['closing_balance'], 2) ?>
+                                    ₦<?= number_format(round($m['closing_balance'])) ?>
                                 </td>
                             <?php endforeach; ?>
-                            <td class="text-end fw-bold bg-light text-primary">₦<?= number_format($cashflow['net_annual_cashflow'], 2) ?></td>
+                            <td class="text-end fw-bold bg-light text-primary">₦<?= number_format(round($cashflow['net_annual_cashflow'])) ?></td>
                         </tr>
                     </tbody>
                 </table>
@@ -374,7 +374,7 @@ $netData = array_map(function($m) { return round($m['net_cashflow'], 2); }, $mon
                             <?= ($yoy['income_growth_pct'] >= 0 ? '+' : '') . $yoy['income_growth_pct'] ?>%
                         </h3>
                         <div class="small text-muted">
-                            ₦<?= number_format($yoy['current']['total_inflow'], 2) ?> vs ₦<?= number_format($yoy['previous']['total_inflow'], 2) ?>
+                            ₦<?= number_format(round($yoy['current']['total_inflow'])) ?> vs ₦<?= number_format(round($yoy['previous']['total_inflow'])) ?>
                         </div>
                     </div>
                 </div>
@@ -385,7 +385,7 @@ $netData = array_map(function($m) { return round($m['net_cashflow'], 2); }, $mon
                             <?= ($yoy['expense_growth_pct'] >= 0 ? '+' : '') . $yoy['expense_growth_pct'] ?>%
                         </h3>
                         <div class="small text-muted">
-                            ₦<?= number_format($yoy['current']['total_outflow'], 2) ?> vs ₦<?= number_format($yoy['previous']['total_outflow'], 2) ?>
+                            ₦<?= number_format(round($yoy['current']['total_outflow'])) ?> vs ₦<?= number_format(round($yoy['previous']['total_outflow'])) ?>
                         </div>
                     </div>
                 </div>
@@ -396,7 +396,7 @@ $netData = array_map(function($m) { return round($m['net_cashflow'], 2); }, $mon
                             <?= ($yoy['net_growth_pct'] >= 0 ? '+' : '') . $yoy['net_growth_pct'] ?>%
                         </h3>
                         <div class="small text-muted">
-                            ₦<?= number_format($yoy['current']['net_annual_cashflow'], 2) ?> vs ₦<?= number_format($yoy['previous']['net_annual_cashflow'], 2) ?>
+                            ₦<?= number_format(round($yoy['current']['net_annual_cashflow'])) ?> vs ₦<?= number_format(round($yoy['previous']['net_annual_cashflow'])) ?>
                         </div>
                     </div>
                 </div>

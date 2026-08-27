@@ -247,7 +247,7 @@ $txCount      = (int)($summary['record_count'] ?? 0);
                     </div>
                 </div>
                 <div class="fin-value text-success">
-                    ₦<?= number_format($totalIncome, 2) ?>
+                    ₦<?= number_format(round($totalIncome)) ?>
                 </div>
                 <div class="fin-subtext">
                     <span class="fin-badge fin-badge-success"><i class="bx bx-check-circle"></i> Inflow</span>
@@ -267,7 +267,7 @@ $txCount      = (int)($summary['record_count'] ?? 0);
                     </div>
                 </div>
                 <div class="fin-value text-danger">
-                    ₦<?= number_format($totalExpense, 2) ?>
+                    ₦<?= number_format(round($totalExpense)) ?>
                 </div>
                 <div class="fin-subtext">
                     <span class="fin-badge fin-badge-danger"><i class="bx bx-arrow-from-left"></i> Outflow</span>
@@ -287,7 +287,7 @@ $txCount      = (int)($summary['record_count'] ?? 0);
                     </div>
                 </div>
                 <div class="fin-value <?= $netBalance >= 0 ? 'text-primary' : 'text-danger' ?>">
-                    ₦<?= number_format($netBalance, 2) ?>
+                    ₦<?= number_format(round($netBalance)) ?>
                 </div>
                 <div class="fin-subtext">
                     <span class="fin-badge <?= $netBalance >= 0 ? 'fin-badge-success' : 'fin-badge-danger' ?>">
@@ -350,8 +350,8 @@ $txCount      = (int)($summary['record_count'] ?? 0);
                                     ?>
                                     <tr>
                                         <td class="fw-semibold"><?= htmlspecialchars($u['name']) ?></td>
-                                        <td class="text-end text-success fw-semibold">₦<?= number_format($uInc, 2) ?></td>
-                                        <td class="text-end fw-bold <?= $uNet >= 0 ? 'text-primary' : 'text-danger' ?>">₦<?= number_format($uNet, 2) ?></td>
+                                        <td class="text-end text-success fw-semibold">₦<?= number_format(round($uInc)) ?></td>
+                                        <td class="text-end fw-bold <?= $uNet >= 0 ? 'text-primary' : 'text-danger' ?>">₦<?= number_format(round($uNet)) ?></td>
                                     </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -412,7 +412,7 @@ $txCount      = (int)($summary['record_count'] ?? 0);
                                     </span>
                                 </td>
                                 <td class="text-end fw-bold fs-6 <?= $isInc ? 'text-success' : 'text-danger' ?>">
-                                    <?= $isInc ? '+' : '-' ?>₦<?= number_format($r['amount'], 2) ?>
+                                    <?= $isInc ? '+' : '-' ?>₦<?= number_format(round($r['amount'])) ?>
                                 </td>
                                 <td class="text-center">
                                     <span class="fin-badge <?= $isInc ? 'fin-badge-success' : 'fin-badge-danger' ?>">

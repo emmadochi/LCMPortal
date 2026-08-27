@@ -187,7 +187,7 @@ use App\Utilities\AssetHelper;
                     </div>
                 </div>
                 <div class="fin-value text-primary">
-                    ₦<?= number_format($summary['total_target'], 2) ?>
+                    ₦<?= number_format(round($summary['total_target'])) ?>
                 </div>
                 <div class="fin-subtext">
                     <i class="bx bx-list-check text-muted me-1"></i> <?= $summary['total_pledges'] ?> Total Commitments
@@ -206,7 +206,7 @@ use App\Utilities\AssetHelper;
                     </div>
                 </div>
                 <div class="fin-value text-success">
-                    ₦<?= number_format($summary['total_redeemed'], 2) ?>
+                    ₦<?= number_format(round($summary['total_redeemed'])) ?>
                 </div>
                 <div class="fin-subtext">
                     <span class="badge bg-soft-success text-success fw-bold"><?= $summary['fulfilled_count'] ?> Fulfilled</span>
@@ -225,7 +225,7 @@ use App\Utilities\AssetHelper;
                     </div>
                 </div>
                 <div class="fin-value text-warning">
-                    ₦<?= number_format($summary['remaining'], 2) ?>
+                    ₦<?= number_format(round($summary['remaining'])) ?>
                 </div>
                 <div class="fin-subtext">
                     <?= $summary['in_progress_count'] + $summary['pending_count'] ?> Pending Redemptions
@@ -355,11 +355,11 @@ use App\Utilities\AssetHelper;
                                         </span>
                                     </td>
                                     <td class="text-end fw-bold text-dark">
-                                        ₦<?= number_format($p['target_amount'], 2) ?>
+                                        ₦<?= number_format(round($p['target_amount'])) ?>
                                     </td>
                                     <td class="text-end fw-bold text-success">
-                                        ₦<?= number_format($p['amount_paid'], 2) ?>
-                                        <div class="small text-muted">Bal: ₦<?= number_format($p['remaining_balance'], 2) ?></div>
+                                        ₦<?= number_format(round($p['amount_paid'])) ?>
+                                        <div class="small text-muted">Bal: ₦<?= number_format(round($p['remaining_balance'])) ?></div>
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center justify-content-between mb-1 small">
@@ -410,14 +410,14 @@ use App\Utilities\AssetHelper;
                                                             <div class="alert alert-light border mb-3">
                                                                 <div class="small text-muted">Donor: <strong class="text-dark"><?= htmlspecialchars($donorDisplayName) ?></strong></div>
                                                                 <div class="small text-muted">Campaign: <strong class="text-dark"><?= htmlspecialchars($p['campaign_name']) ?></strong></div>
-                                                                <div class="small text-muted">Outstanding Balance: <strong class="text-danger">₦<?= number_format($p['remaining_balance'], 2) ?></strong></div>
+                                                                <div class="small text-muted">Outstanding Balance: <strong class="text-danger">₦<?= number_format(round($p['remaining_balance'])) ?></strong></div>
                                                             </div>
 
                                                             <div class="mb-3">
                                                                 <label class="form-label fw-bold small text-muted text-uppercase">Payment Amount (₦) <span class="text-danger">*</span></label>
                                                                 <div class="input-group">
                                                                     <span class="input-group-text bg-light">₦</span>
-                                                                    <input type="number" step="0.01" name="amount" class="form-control" value="<?= $p['remaining_balance'] ?>" max="<?= $p['remaining_balance'] ?>" min="0.01" required>
+                                                                    <input type="number" step="1" name="amount" class="form-control" value="<?= round($p['remaining_balance']) ?>" max="<?= $p['remaining_balance'] ?>" min="1" required>
                                                                 </div>
                                                             </div>
 
