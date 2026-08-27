@@ -202,7 +202,7 @@
 
 /* ── 3. App-Style Mobile Bottom Navigation Bar (Dock) ── */
 .mobile-app-dock {
-  display: none;
+  display: none !important;
   position: fixed;
   bottom: 0;
   left: 0;
@@ -248,15 +248,16 @@
 
 /* ── 4. Mobile Responsiveness Overhauls (< 768px) ── */
 @media (max-width: 767.98px) {
-  /* Show App Dock */
+  /* Show App Dock on mobile screens only */
   .mobile-app-dock {
-    display: flex;
+    display: flex !important;
   }
 
   /* Safe Area & Bottom Spacing for Body Content */
   body {
     padding-bottom: calc(72px + env(safe-area-inset-bottom, 0)) !important;
   }
+}
 
   /* Compact Hero Banners */
   .db-hero {

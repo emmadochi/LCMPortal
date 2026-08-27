@@ -403,7 +403,7 @@ use App\Utilities\AssetHelper;
 <!-- END layout-wrapper -->
 
 <!-- Mobile App Bottom Navigation Dock (PWA Ergonomics) -->
-<nav class="mobile-app-dock" aria-label="Mobile Navigation">
+<nav class="mobile-app-dock" style="display: none;" aria-label="Mobile Navigation">
     <a href="<?= AssetHelper::url('') ?>" class="mobile-dock-item <?= ($_SERVER['REQUEST_URI'] === '/' || strpos($_SERVER['REQUEST_URI'], '/dashboard') !== false) ? 'active' : '' ?>">
         <i class="bx bx-home-alt-2"></i>
         <span>Home</span>
