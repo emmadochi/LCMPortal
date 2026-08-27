@@ -11,7 +11,7 @@ const STATIC_ASSETS = [
   './assets/css/app.min.css',
   './assets/css/admin-custom.css',
   './assets/css/premium-theme.css',
-  './assets/js/mobile-pwa.css'
+  './assets/css/mobile-pwa.css'
 ];
 
 // Install Event

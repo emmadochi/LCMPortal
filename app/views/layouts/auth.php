@@ -114,7 +114,7 @@ $title = $title ?? 'Login';
     <!-- password addon init -->
     <script src="<?= AssetHelper::js('pages/pass-addon.init.js') ?>"></script>
     <!-- PWA Installation & Service Worker registration -->
-    <script src="<?= AssetHelper::js('pwa-install.js') ?>"></script>
+    <script src="<?= AssetHelper::js('pwa-install.js') ?>?v=<?= time() ?>"></script>
 </body>
 </html>
 

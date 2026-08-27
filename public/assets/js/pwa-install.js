@@ -1,29 +1,37 @@
 /**
- * Life Changers Ministry Portal - PWA Installation & Service Worker Registration
+ * Life Changers Ministry Portal - PWA Installation & Service Worker Engine
  */
 (function () {
   'use strict';
 
   let deferredPrompt = null;
   const STORAGE_KEY_DISMISSED = 'lcm_pwa_dismissed_until';
-  const COOLDOWN_DAYS = 5;
+  const COOLDOWN_DAYS = 3;
 
   // 1. Register Service Worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      // Determine correct sw.js path
       const swUrl = document.querySelector('meta[name="sw-path"]')?.getAttribute('content') || '/sw.js';
       navigator.serviceWorker.register(swUrl)
         .then((reg) => {
-          console.log('[PWA] Service Worker registered successfully:', reg.scope);
+          console.log('[PWA] Service Worker registered scope:', reg.scope);
         })
         .catch((err) => {
-          console.warn('[PWA] Service Worker registration failed:', err);
+          console.warn('[PWA] Service Worker registration info:', err);
         });
     });
   }
 
-  // 2. Helper: Check if dismissed recently
+  // 2. Check standalone display mode
+  function isStandalone() {
+    return (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true ||
+      document.referrer.includes('android-app://')
+    );
+  }
+
+  // 3. Helper: Check if dismissed recently
   function isPromptDismissed() {
     const dismissedUntil = localStorage.getItem(STORAGE_KEY_DISMISSED);
     if (!dismissedUntil) return false;
@@ -35,26 +43,18 @@
     localStorage.setItem(STORAGE_KEY_DISMISSED, expiry.toString());
   }
 
-  // 3. Helper: Check if already in standalone PWA mode
-  function isStandalone() {
-    return (
-      window.matchMedia('(display-mode: standalone)').matches ||
-      window.navigator.standalone === true ||
-      document.referrer.includes('android-app://')
-    );
-  }
-
   // 4. Create and inject PWA Install Pop-up UI into the DOM
   function createInstallUI() {
     if (document.getElementById('pwaInstallBanner')) return;
 
+    const iconUrl = document.querySelector('meta[name="pwa-icon"]')?.getAttribute('content') || '/assets/images/pwa/icon-192x192.png';
     const banner = document.createElement('div');
     banner.id = 'pwaInstallBanner';
-    banner.className = 'pwa-install-banner animate-slide-up';
+    banner.className = 'pwa-install-banner';
     banner.innerHTML = `
       <div class="pwa-banner-content">
         <div class="pwa-banner-logo">
-          <img src="${document.querySelector('meta[name="pwa-icon"]')?.getAttribute('content') || '/assets/images/pwa/icon-192x192.png'}" alt="LCM App">
+          <img src="${iconUrl}" alt="LCM App">
         </div>
         <div class="pwa-banner-text">
           <div class="pwa-banner-title">Install LCM Portal App</div>
@@ -85,7 +85,7 @@
     if (banner) {
       setTimeout(() => {
         banner.classList.add('show');
-      }, 1200); // graceful 1.2s delay after page load
+      }, 1000); // 1.0s delay after load
     }
   }
 
@@ -102,30 +102,31 @@
     hideBanner();
   }
 
-  // 5. Trigger Native Install Prompt
+  // 5. Trigger Install Prompt (Native or Fallback Modal)
   function triggerInstall() {
     if (deferredPrompt) {
       deferredPrompt.prompt();
       deferredPrompt.userChoice.then((choiceResult) => {
         if (choiceResult.outcome === 'accepted') {
           console.log('[PWA] User accepted install prompt');
-        } else {
-          console.log('[PWA] User dismissed install prompt');
         }
         deferredPrompt = null;
         hideBanner();
       });
     } else {
-      // iOS / Safari or unsupported fallback
-      showIosInstructions();
+      showDeviceInstructions();
     }
   }
 
-  // 6. iOS Installation Modal Fallback
-  function showIosInstructions() {
+  // Expose global trigger for any button
+  window.triggerPwaInstall = triggerInstall;
+
+  // 6. Device-Specific Installation Instructions Modal
+  function showDeviceInstructions() {
     hideBanner();
     const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const modalId = 'pwaIosModal';
+    const isAndroid = /Android/.test(navigator.userAgent);
+    const modalId = 'pwaInstallModal';
     if (document.getElementById(modalId)) return;
 
     const modal = document.createElement('div');
@@ -136,23 +137,31 @@
         <div class="pwa-modal-header">
           <div class="d-flex align-items-center gap-2">
             <i class="bx bx-mobile-alt text-primary fs-3"></i>
-            <h5 class="mb-0 fw-bold">Install on your Device</h5>
+            <h5 class="mb-0 fw-bold">Install LCM Portal App</h5>
           </div>
           <button class="pwa-modal-close" onclick="document.getElementById('${modalId}').remove()">&times;</button>
         </div>
         <div class="pwa-modal-body">
           ${isIos ? `
-            <p class="text-muted small mb-3">To install LCM Portal on your iPhone or iPad:</p>
+            <p class="text-muted small mb-3">To install LCM Portal on your iPhone / iPad:</p>
             <ol class="pwa-steps">
               <li>Tap the <strong>Share</strong> button <i class="bx bx-share-alt text-primary"></i> at the bottom of Safari.</li>
               <li>Scroll down and tap <strong>"Add to Home Screen"</strong> <i class="bx bx-plus-square text-success"></i>.</li>
-              <li>Tap <strong>"Add"</strong> at the top right to complete installation.</li>
+              <li>Tap <strong>"Add"</strong> at the top right to complete.</li>
+            </ol>
+          ` : isAndroid ? `
+            <p class="text-muted small mb-3">To install LCM Portal on your Android device:</p>
+            <ol class="pwa-steps">
+              <li>Tap your browser menu <i class="bx bx-dots-vertical-rounded"></i> at the top right.</li>
+              <li>Tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong> <i class="bx bx-download text-primary"></i>.</li>
+              <li>Confirm when prompted to install.</li>
             </ol>
           ` : `
-            <p class="text-muted small mb-3">To install LCM Portal as a desktop or mobile application:</p>
+            <p class="text-muted small mb-3">To install LCM Portal on your Computer / Desktop:</p>
             <ol class="pwa-steps">
-              <li>Tap your browser menu <i class="bx bx-dots-vertical-rounded"></i> or install icon <i class="bx bx-download text-primary"></i> in the URL address bar.</li>
-              <li>Select <strong>"Install Life Changers Ministry Portal"</strong> or <strong>"Add to Phone"</strong>.</li>
+              <li>Look at the right side of your browser URL address bar for the <strong>Install icon</strong> <i class="bx bx-download text-primary"></i>.</li>
+              <li>Click <strong>Install</strong> to add the portal to your desktop / apps.</li>
+              <li>Alternatively, open your browser menu <i class="bx bx-dots-vertical-rounded"></i> ➔ <strong>"Install Life Changers Ministry Portal"</strong>.</li>
             </ol>
           `}
         </div>
@@ -164,11 +173,11 @@
     document.body.appendChild(modal);
   }
 
-  // 7. Listen for beforeinstallprompt
+  // 7. Listen for beforeinstallprompt event
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    // Show install buttons / menu items across the UI
+    console.log('[PWA] Captured beforeinstallprompt event');
     document.querySelectorAll('.pwa-install-trigger').forEach((btn) => {
       btn.style.display = 'inline-flex';
     });
@@ -177,7 +186,7 @@
 
   // 8. Listen for successful install
   window.addEventListener('appinstalled', () => {
-    console.log('[PWA] LCM Portal app was installed successfully!');
+    console.log('[PWA] App installed successfully');
     deferredPrompt = null;
     hideBanner();
     document.querySelectorAll('.pwa-install-trigger').forEach((btn) => {
@@ -185,19 +194,19 @@
     });
   });
 
-  // 9. Manual install trigger binds (e.g. sidebar or user menu buttons)
+  // 9. Auto-initialize on DOM ready
   document.addEventListener('DOMContentLoaded', () => {
+    // Show sidebar trigger buttons
     document.querySelectorAll('.pwa-install-trigger').forEach((btn) => {
+      btn.style.display = 'block';
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         triggerInstall();
       });
     });
 
-    // Check if on iOS Safari in browser mode and not standalone
-    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    if (isIos && isSafari && !isStandalone() && !isPromptDismissed()) {
+    // Automatically trigger banner on all non-standalone browsers
+    if (!isStandalone()) {
       showBanner();
     }
   });

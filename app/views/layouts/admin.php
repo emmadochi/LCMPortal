@@ -42,7 +42,7 @@ use App\Utilities\AssetHelper;
     <!-- Custom Admin Css -->
     <link href="<?= AssetHelper::css('admin-custom.css') ?>" rel="stylesheet" type="text/css" />
     <link href="<?= AssetHelper::css('premium-theme.css') ?>" rel="stylesheet" type="text/css" />
-    <link href="<?= AssetHelper::css('mobile-pwa.css') ?>" rel="stylesheet" type="text/css" />
+    <link href="<?= AssetHelper::css('mobile-pwa.css') ?>?v=<?= time() ?>" rel="stylesheet" type="text/css" />
     
     <!-- DataTables -->
     <link href="<?= AssetHelper::lib('datatables.net-bs4/css/dataTables.bootstrap4.min.css') ?>" rel="stylesheet" type="text/css" />
@@ -466,7 +466,7 @@ use App\Utilities\AssetHelper;
 <script src="<?= AssetHelper::js('app.js') ?>"></script>
 
 <!-- PWA Installation & Service Worker registration -->
-<script src="<?= AssetHelper::js('pwa-install.js') ?>"></script>
+<script src="<?= AssetHelper::js('pwa-install.js') ?>?v=<?= time() ?>"></script>
 
 <script>
 // Setup jQuery AJAX to automatically include CSRF token in header
