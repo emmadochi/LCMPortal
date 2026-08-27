@@ -1,25 +1,12 @@
-<IfModule mod_negotiation.c>
-    Options -MultiViews -Indexes
-</IfModule>
-
 <IfModule mod_rewrite.c>
-    Options +FollowSymLinks
-    DirectoryIndex index.php
-
     RewriteEngine On
     RewriteBase /
 
-    # Handle Authorization Header
-    RewriteCond %{HTTP:Authorization} .
-    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+    # If requested file or directory exists physically, serve directly
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
 
-    # Redirect Trailing Slashes If Not A Folder
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} (.+)/$
-    RewriteRule ^ %1 [L,R=301]
-
-    # Send Requests To Front Controller
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_FILENAME} !-f
+    # Otherwise route to index.php
     RewriteRule ^(.*)$ index.php [QSA,L]
 </IfModule>
