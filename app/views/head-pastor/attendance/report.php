@@ -451,54 +451,23 @@ $trendFirstTimers = array_map('intval', array_column($trend, 'first_timers'));
     </div>
 </div>
 
-<!-- Chart.js & Preset Scripts -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Chart.js & Table Scripts -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // 1. Preset Date Buttons Handler
-    var now = new Date();
-    function formatDate(d) {
-        var month = '' + (d.getMonth() + 1),
-            day = '' + d.getDate(),
-            year = d.getFullYear();
-        if (month.length < 2) month = '0' + month;
-        if (day.length < 2) day = '0' + day;
-        return [year, month, day].join('-');
+function initReportCharts() {
+    if (typeof Chart === 'undefined') {
+        setTimeout(initReportCharts, 100);
+        return;
     }
-
-    $(".preset-btn").on("click", function() {
-        var preset = $(this).data("preset");
-        var s = new Date(), e = new Date();
-
-        if (preset === 'this_month') {
-            s = new Date(now.getFullYear(), now.getMonth(), 1);
-            e = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        } else if (preset === 'last_month') {
-            s = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            e = new Date(now.getFullYear(), now.getMonth(), 0);
-        } else if (preset === 'last_30') {
-            s = new Date();
-            s.setDate(now.getDate() - 30);
-            e = new Date();
-        } else if (preset === 'this_quarter') {
-            var q = Math.floor(now.getMonth() / 3);
-            s = new Date(now.getFullYear(), q * 3, 1);
-            e = new Date(now.getFullYear(), (q + 1) * 3, 0);
-        } else if (preset === 'ytd') {
-            s = new Date(now.getFullYear(), 0, 1);
-            e = new Date();
-        }
-
-        $("#startDateInput").val(formatDate(s));
-        $("#endDateInput").val(formatDate(e));
-        $("#reportFilterForm").submit();
-    });
 
     // 2. Render Period Trend Line Chart
     <?php if (!empty($trend)): ?>
     var trendCanvas = document.getElementById('periodTrendChart');
     if (trendCanvas) {
-        new Chart(trendCanvas, {
+        if (window.myPeriodTrendChart instanceof Chart) {
+            window.myPeriodTrendChart.destroy();
+        }
+        var tctx = trendCanvas.getContext('2d');
+        window.myPeriodTrendChart = new Chart(tctx, {
             type: 'line',
             data: {
                 labels: <?= json_encode($trendLabels) ?>,
@@ -577,7 +546,11 @@ document.addEventListener('DOMContentLoaded', function() {
     <?php if ($totalPresent > 0): ?>
     var donutCanvas = document.getElementById('retentionDonutChart');
     if (donutCanvas) {
-        new Chart(donutCanvas, {
+        if (window.myRetentionDonutChart instanceof Chart) {
+            window.myRetentionDonutChart.destroy();
+        }
+        var dctx = donutCanvas.getContext('2d');
+        window.myRetentionDonutChart = new Chart(dctx, {
             type: 'doughnut',
             data: {
                 labels: ['Returning Members', 'First Timers'],
@@ -607,7 +580,63 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     <?php endif; ?>
-});
+}
+
+function setupReportPresets() {
+    var now = new Date();
+    function formatDate(d) {
+        var month = '' + (d.getMonth() + 1),
+            day = '' + d.getDate(),
+            year = d.getFullYear();
+        if (month.length < 2) month = '0' + month;
+        if (day.length < 2) day = '0' + day;
+        return [year, month, day].join('-');
+    }
+
+    var presetBtns = document.querySelectorAll(".preset-btn");
+    presetBtns.forEach(function(btn) {
+        btn.addEventListener("click", function() {
+            var preset = this.getAttribute("data-preset");
+            var s = new Date(), e = new Date();
+
+            if (preset === 'this_month') {
+                s = new Date(now.getFullYear(), now.getMonth(), 1);
+                e = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            } else if (preset === 'last_month') {
+                s = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                e = new Date(now.getFullYear(), now.getMonth(), 0);
+            } else if (preset === 'last_30') {
+                s = new Date();
+                s.setDate(now.getDate() - 30);
+                e = new Date();
+            } else if (preset === 'this_quarter') {
+                var q = Math.floor(now.getMonth() / 3);
+                s = new Date(now.getFullYear(), q * 3, 1);
+                e = new Date(now.getFullYear(), (q + 1) * 3, 0);
+            } else if (preset === 'ytd') {
+                s = new Date(now.getFullYear(), 0, 1);
+                e = new Date();
+            }
+
+            var startEl = document.getElementById("startDateInput");
+            var endEl = document.getElementById("endDateInput");
+            var formEl = document.getElementById("reportFilterForm");
+            if (startEl) startEl.value = formatDate(s);
+            if (endEl) endEl.value = formatDate(e);
+            if (formEl) formEl.submit();
+        });
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        initReportCharts();
+        setupReportPresets();
+    });
+} else {
+    initReportCharts();
+    setupReportPresets();
+}
 
 // CSV Export Helper
 function exportTableToCSV(filename) {

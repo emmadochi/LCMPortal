@@ -53,7 +53,11 @@ use App\Utilities\AssetHelper;
     
     <!-- SweetAlert2 -->
     <link href="<?= AssetHelper::lib('sweetalert2/sweetalert2.min.css') ?>" rel="stylesheet" type="text/css" />
-    
+
+    <!-- Core JavaScript & Chart.js in Head for Seamless View Execution -->
+    <script src="<?= AssetHelper::lib('jquery/jquery.min.js') ?>"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
     <!-- Custom CSS -->
     <style>
         body, .main-content, .page-content {

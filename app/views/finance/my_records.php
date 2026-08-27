@@ -461,13 +461,21 @@ $pledgeProgress = $totalPledgeAmount > 0 ? round(($totalPledgePaid / $totalPledg
 </div>
 
 <!-- Chart.js & Table Scripts -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+function initGivingCharts() {
+    if (typeof Chart === 'undefined') {
+        setTimeout(initGivingCharts, 100);
+        return;
+    }
+
     // 1. Monthly Giving Timeline Chart
     var monthlyCanvas = document.getElementById('monthlyGivingChart');
     if (monthlyCanvas) {
-        new Chart(monthlyCanvas, {
+        if (window.myMonthlyGivingChart instanceof Chart) {
+            window.myMonthlyGivingChart.destroy();
+        }
+        var ctx = monthlyCanvas.getContext('2d');
+        window.myMonthlyGivingChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: <?= json_encode($monthLabels) ?>,
@@ -475,6 +483,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     label: 'Monthly Giving (₦)',
                     data: <?= json_encode($monthlyValues) ?>,
                     backgroundColor: '#34c38f',
+                    hoverBackgroundColor: '#2ca67a',
                     borderRadius: 6,
                     borderSkipped: false,
                     maxBarThickness: 36
@@ -491,7 +500,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         cornerRadius: 8,
                         callbacks: {
                             label: function(context) {
-                                return 'Giving: ₦' + context.parsed.y.toLocaleString('en-US', {minimumFractionDigits: 2});
+                                return 'Giving: ₦' + Number(context.parsed.y).toLocaleString('en-US', {minimumFractionDigits: 2});
                             }
                         }
                     }
@@ -522,7 +531,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // 2. Category Allocation Donut Chart
     var donutCanvas = document.getElementById('categoryDonutChart');
     if (donutCanvas && <?= !empty($categoryBreakdown) ? 'true' : 'false' ?>) {
-        new Chart(donutCanvas, {
+        if (window.myCategoryGivingChart instanceof Chart) {
+            window.myCategoryGivingChart.destroy();
+        }
+        var dctx = donutCanvas.getContext('2d');
+        window.myCategoryGivingChart = new Chart(dctx, {
             type: 'doughnut',
             data: {
                 labels: <?= json_encode($catLabels) ?>,
@@ -546,7 +559,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         cornerRadius: 6,
                         callbacks: {
                             label: function(context) {
-                                return ' ' + context.label + ': ₦' + context.parsed.toLocaleString('en-US', {minimumFractionDigits: 2});
+                                return ' ' + context.label + ': ₦' + Number(context.parsed).toLocaleString('en-US', {minimumFractionDigits: 2});
                             }
                         }
                     }
@@ -554,48 +567,75 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+}
 
-    // 3. Live Search & Category Filter for Table
+// Live Search & Category Filter for Table
+function setupGivingTableFilters() {
+    var searchInput = document.getElementById("tableSearchInput");
+    var categorySelect = document.getElementById("categoryFilterSelect");
+    if (!searchInput || !categorySelect) return;
+
     function filterTable() {
-        var query = $("#tableSearchInput").val().toLowerCase();
-        var selectedCat = $("#categoryFilterSelect").val();
+        var query = (searchInput.value || '').toLowerCase();
+        var selectedCat = categorySelect.value || '';
+        var rows = document.querySelectorAll("#givingRecordsTable tbody tr");
 
-        $("#givingRecordsTable tbody tr").each(function() {
-            var row = $(this);
-            var text = row.text().toLowerCase();
-            var rowCat = row.data("category") || '';
-
+        rows.forEach(function(row) {
+            var text = (row.textContent || '').toLowerCase();
+            var rowCat = row.getAttribute("data-category") || '';
             var matchesQuery = text.indexOf(query) !== -1;
             var matchesCat = !selectedCat || rowCat === selectedCat;
 
             if (matchesQuery && matchesCat) {
-                row.show();
+                row.style.display = "";
             } else {
-                row.hide();
+                row.style.display = "none";
             }
         });
     }
 
-    $("#tableSearchInput").on("keyup", filterTable);
-    $("#categoryFilterSelect").on("change", filterTable);
+    searchInput.addEventListener("keyup", filterTable);
+    categorySelect.addEventListener("change", filterTable);
 
-    // 4. Receipt Slip Modal Trigger
-    $(".view-receipt-btn").on("click", function() {
-        var data = $(this).data("receipt");
-        if (!data) return;
+    // Receipt Slip Modal Trigger
+    var receiptButtons = document.querySelectorAll(".view-receipt-btn");
+    receiptButtons.forEach(function(btn) {
+        btn.addEventListener("click", function() {
+            var rawData = this.getAttribute("data-receipt");
+            if (!rawData) return;
+            try {
+                var data = JSON.parse(rawData);
+                document.getElementById("receiptChurchName").textContent = data.church || 'Life Changers Church';
+                document.getElementById("receiptRef").textContent = "REF: " + (data.ref || 'LCM-TX-00000000');
+                document.getElementById("receiptDonor").textContent = data.donor || 'Member';
+                document.getElementById("receiptDate").textContent = data.date || '';
+                document.getElementById("receiptCategory").textContent = data.category || '';
+                document.getElementById("receiptDesc").textContent = data.description || '';
+                document.getElementById("receiptAmount").textContent = data.amount || '₦0.00';
 
-        $("#receiptChurchName").text(data.church);
-        $("#receiptRef").text("REF: " + data.ref);
-        $("#receiptDonor").text(data.donor);
-        $("#receiptDate").text(data.date);
-        $("#receiptCategory").text(data.category);
-        $("#receiptDesc").text(data.description);
-        $("#receiptAmount").text(data.amount);
-
-        var modal = new bootstrap.Modal(document.getElementById('receiptModal'));
-        modal.show();
+                var modalEl = document.getElementById('receiptModal');
+                if (window.bootstrap && bootstrap.Modal) {
+                    var modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                    modal.show();
+                } else if (typeof jQuery !== 'undefined') {
+                    $('#receiptModal').modal('show');
+                }
+            } catch (e) {
+                console.error("Receipt parsing error:", e);
+            }
+        });
     });
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        initGivingCharts();
+        setupGivingTableFilters();
+    });
+} else {
+    initGivingCharts();
+    setupGivingTableFilters();
+}
 
 function printReceiptSlip() {
     var printContent = document.getElementById("printableReceiptSlip").innerHTML;
@@ -625,3 +665,4 @@ function printReceiptSlip() {
     }
 }
 </style>
+

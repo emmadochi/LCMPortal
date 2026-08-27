@@ -464,13 +464,16 @@ foreach ($eventTypeBreakdown ?? [] as $eb) {
 <!-- Chart.js Engine & Interactive Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+function initAttendanceDashboard() {
+    if (typeof Chart === 'undefined') {
+        setTimeout(initAttendanceDashboard, 100);
+        return;
+    }
+
     var chartDataUrl = "<?= AssetHelper::url("churches/{$churchId}/attendance/chart-data") ?>";
     var currentChartType = 'bar';
     var currentPeriod = 'monthly';
     var attendanceChart = null;
-
-    // Cache initial data from controller if available
     var initialChartData = <?= json_encode($chartData ?? []) ?>;
 
     function renderChart(data, chartType) {
@@ -481,8 +484,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var chartWrapper = document.getElementById('chartWrapper');
 
         if (!data || !data.length) {
-            chartWrapper.classList.add('d-none');
-            emptyState.classList.remove('d-none');
+            if (chartWrapper) chartWrapper.classList.add('d-none');
+            if (emptyState) emptyState.classList.remove('d-none');
             if (attendanceChart) {
                 attendanceChart.destroy();
                 attendanceChart = null;
@@ -490,8 +493,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        chartWrapper.classList.remove('d-none');
-        emptyState.classList.add('d-none');
+        if (chartWrapper) chartWrapper.classList.remove('d-none');
+        if (emptyState) emptyState.classList.add('d-none');
 
         var labels = data.map(function(d) { return d.label; });
         var present = data.map(function(d) { return parseInt(d.present) || 0; });
@@ -503,171 +506,85 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         var datasets = [];
-
         if (chartType === 'line') {
             datasets = [
-                {
-                    label: 'Present',
-                    data: present,
-                    borderColor: '#34c38f',
-                    backgroundColor: 'rgba(52, 195, 143, 0.15)',
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0.35,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#34c38f'
-                },
-                {
-                    label: 'First Timers',
-                    data: firstTimer,
-                    borderColor: '#f1b44c',
-                    backgroundColor: 'rgba(241, 180, 76, 0.15)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.35,
-                    pointRadius: 3,
-                    pointBackgroundColor: '#f1b44c'
-                },
-                {
-                    label: 'Absent',
-                    data: absent,
-                    borderColor: '#74788d',
-                    backgroundColor: 'rgba(116, 120, 141, 0.05)',
-                    borderWidth: 2,
-                    borderDash: [5, 5],
-                    fill: false,
-                    tension: 0.35,
-                    pointRadius: 3,
-                    pointBackgroundColor: '#74788d'
-                }
+                { label: 'Present', data: present, borderColor: '#34c38f', backgroundColor: 'rgba(52, 195, 143, 0.15)', borderWidth: 3, fill: true, tension: 0.35, pointRadius: 4, pointBackgroundColor: '#34c38f' },
+                { label: 'First Timers', data: firstTimer, borderColor: '#f1b44c', backgroundColor: 'rgba(241, 180, 76, 0.15)', borderWidth: 2, fill: true, tension: 0.35, pointRadius: 3, pointBackgroundColor: '#f1b44c' },
+                { label: 'Absent', data: absent, borderColor: '#74788d', backgroundColor: 'rgba(116, 120, 141, 0.05)', borderWidth: 2, borderDash: [5, 5], fill: false, tension: 0.35, pointRadius: 3, pointBackgroundColor: '#74788d' }
             ];
         } else {
-            // Bar chart
             datasets = [
-                {
-                    label: 'Present',
-                    data: present,
-                    backgroundColor: '#34c38f',
-                    borderRadius: 6,
-                    borderSkipped: false,
-                    maxBarThickness: 32
-                },
-                {
-                    label: 'First Timers',
-                    data: firstTimer,
-                    backgroundColor: '#f1b44c',
-                    borderRadius: 6,
-                    borderSkipped: false,
-                    maxBarThickness: 32
-                },
-                {
-                    label: 'Absent',
-                    data: absent,
-                    backgroundColor: '#e2e5e8',
-                    borderRadius: 6,
-                    borderSkipped: false,
-                    maxBarThickness: 32
-                }
+                { label: 'Present', data: present, backgroundColor: '#34c38f', borderRadius: 6, borderSkipped: false, maxBarThickness: 32 },
+                { label: 'First Timers', data: firstTimer, backgroundColor: '#f1b44c', borderRadius: 6, borderSkipped: false, maxBarThickness: 32 },
+                { label: 'Absent', data: absent, backgroundColor: '#e2e5e8', borderRadius: 6, borderSkipped: false, maxBarThickness: 32 }
             ];
         }
 
         attendanceChart = new Chart(canvas, {
             type: chartType,
-            data: {
-                labels: labels,
-                datasets: datasets
-            },
+            data: { labels: labels, datasets: datasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
-                },
+                interaction: { intersect: false, mode: 'index' },
                 plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: '#2a3042',
-                        titleColor: '#ffffff',
-                        bodyColor: '#ffffff',
-                        padding: 12,
-                        cornerRadius: 8,
-                        boxPadding: 6,
-                        usePointStyle: true
-                    }
+                    legend: { display: false },
+                    tooltip: { backgroundColor: '#2a3042', titleColor: '#ffffff', bodyColor: '#ffffff', padding: 12, cornerRadius: 8, boxPadding: 6, usePointStyle: true }
                 },
                 scales: {
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: '#74788d', font: { size: 12 } }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false },
-                        ticks: { color: '#74788d', font: { size: 12 }, precision: 0 }
-                    }
+                    x: { grid: { display: false }, ticks: { color: '#74788d', font: { size: 12 } } },
+                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false }, ticks: { color: '#74788d', font: { size: 12 }, precision: 0 } }
                 }
             }
         });
     }
 
     function loadAttendanceData(period) {
-        var loadingOverlay = document.getElementById('chartLoadingOverlay');
-        var chartWrapper = document.getElementById('chartWrapper');
-
-        if (loadingOverlay) loadingOverlay.classList.remove('d-none');
-        if (chartWrapper) chartWrapper.classList.add('opacity-50');
-
-        $.ajax({
-            url: chartDataUrl + "?period=" + encodeURIComponent(period),
-            type: "GET",
-            dataType: "json",
+        if (typeof jQuery === 'undefined') return;
+        jQuery.ajax({
+            url: chartDataUrl + '?period=' + encodeURIComponent(period),
+            type: 'GET',
+            dataType: 'json',
             success: function(res) {
-                if (loadingOverlay) loadingOverlay.classList.add('d-none');
-                if (chartWrapper) chartWrapper.classList.remove('opacity-50');
-
-                if (res.success && res.data) {
+                if (res && res.success && res.data) {
                     renderChart(res.data, currentChartType);
                 } else {
                     renderChart([], currentChartType);
                 }
             },
             error: function() {
-                if (loadingOverlay) loadingOverlay.classList.add('d-none');
-                if (chartWrapper) chartWrapper.classList.remove('opacity-50');
                 renderChart([], currentChartType);
             }
         });
     }
 
-    // Period switcher (Weekly, Monthly, Yearly)
-    $("#attendance-chart-filter input[name='chartPeriod']").on("change", function() {
-        currentPeriod = $(this).val();
-        loadAttendanceData(currentPeriod);
-    });
+    if (typeof jQuery !== 'undefined') {
+        jQuery("#attendance-chart-filter input[name='chartPeriod']").on("change", function() {
+            currentPeriod = jQuery(this).val();
+            loadAttendanceData(currentPeriod);
+        });
 
-    // Chart Type switcher (Bar vs Line)
-    $("#chartTypeGroup button").on("click", function() {
-        $("#chartTypeGroup button").removeClass("active");
-        $(this).addClass("active");
-        currentChartType = $(this).data("chart-type");
-        loadAttendanceData(currentPeriod);
-    });
+        jQuery("#chartTypeGroup button").on("click", function() {
+            jQuery("#chartTypeGroup button").removeClass("active");
+            jQuery(this).addClass("active");
+            currentChartType = jQuery(this).data("chart-type");
+            loadAttendanceData(currentPeriod);
+        });
+    }
 
-    // Initial render
     if (initialChartData && initialChartData.length > 0) {
         renderChart(initialChartData, currentChartType);
     } else {
         loadAttendanceData(currentPeriod);
     }
 
-    // Render Donut Chart for Service Breakdown
     <?php if (!empty($eventCounts) && array_sum($eventCounts) > 0): ?>
     var donutCanvas = document.getElementById('serviceTypeDonutChart');
     if (donutCanvas) {
-        new Chart(donutCanvas, {
+        if (window.myServiceTypeDonutChart instanceof Chart) {
+            window.myServiceTypeDonutChart.destroy();
+        }
+        window.myServiceTypeDonutChart = new Chart(donutCanvas, {
             type: 'doughnut',
             data: {
                 labels: <?= json_encode($eventLabels) ?>,
@@ -684,20 +601,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 maintainAspectRatio: false,
                 cutout: '70%',
                 plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: '#2a3042',
-                        padding: 10,
-                        cornerRadius: 6
-                    }
+                    legend: { display: false },
+                    tooltip: { backgroundColor: '#2a3042', padding: 10, cornerRadius: 6 }
                 }
             }
         });
     }
     <?php endif; ?>
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAttendanceDashboard);
+} else {
+    initAttendanceDashboard();
+}
 </script>
 
 <style>
