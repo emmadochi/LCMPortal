@@ -36,14 +36,39 @@ class HeadPastorAttendanceController extends BaseHeadPastorController {
         // Get chart data
         $chartData = $this->attendanceModel->getChartDataByPeriod('monthly', $unitIds, $this->churchId);
 
+        // Event type breakdown for distribution chart
+        $eventTypeBreakdown = $this->attendanceModel->getEventTypeBreakdown($unitIds, $this->churchId);
+
+        // Congregation size
+        $congregation = $this->churchModel->getAllChurchCongregation($this->churchId);
+        $totalCongregation = count($congregation);
+
+        $totalPresentAll = 0;
+        $totalAbsentAll = 0;
+        $firstTimersAll = 0;
+        foreach ($chartData as $cd) {
+            $totalPresentAll += (int)($cd['present'] ?? 0);
+            $totalAbsentAll += (int)($cd['absent'] ?? 0);
+            $firstTimersAll += (int)($cd['first_timer'] ?? 0);
+        }
+
+        $totalServicesCount = count($services);
+        $avgAttendance = $totalServicesCount > 0 ? round($totalPresentAll / $totalServicesCount, 1) : 0;
+
         $this->render('head-pastor/attendance/index', [
             'title' => 'Attendance Management - ' . $this->church['name'],
             'pageTitle' => 'Attendance Dashboard',
             'church' => $this->church,
             'services' => array_slice($services, 0, 10), // Recent 10 services
+            'allServicesCount' => $totalServicesCount,
             'chartData' => $chartData,
             'unitIds' => $unitIds,
-            'unitSummaries' => $unitSummaries
+            'unitSummaries' => $unitSummaries,
+            'eventTypeBreakdown' => $eventTypeBreakdown,
+            'totalCongregation' => $totalCongregation,
+            'totalPresentAll' => $totalPresentAll,
+            'avgAttendance' => $avgAttendance,
+            'firstTimersAll' => $firstTimersAll
         ]);
     }
 

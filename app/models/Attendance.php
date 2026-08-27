@@ -332,117 +332,7 @@ class Attendance extends BaseModel {
         return $out;
     }
 
-    /**
-     * Get aggregated attendance data for charts by period (weekly, monthly, yearly).
-     * Returns array of { label, present, absent, first_timer } in chronological order.
-     *
-     * @param string $period One of 'weekly', 'monthly', 'yearly'
-     * @param array $unitIds Optional. When provided (e.g. church filter), only these units or church-wide for that church.
-     * @param int|null $churchId Optional. When provided with unitIds, include church-wide services.
-     * @return array
-     */
-    public function getChartDataByPeriod($period, array $unitIds = [], $churchId = null) {
-        $params = [];
-        $types = '';
-        $where = '1=1';
 
-        if (!empty($unitIds) || $churchId) {
-            $conditions = [];
-            if (!empty($unitIds)) {
-                $placeholders = implode(',', array_fill(0, count($unitIds), '?'));
-                $conditions[] = "a.unit_id IN ({$placeholders})";
-                $params = array_merge($params, $unitIds);
-                $types .= str_repeat('i', count($unitIds));
-            }
-            if ($churchId) {
-                $conditions[] = "(a.church_id = ? AND a.unit_id IS NULL)";
-                $params[] = $churchId;
-                $types .= 'i';
-            }
-            $where = '(' . implode(' OR ', $conditions) . ')';
-        }
-
-        $groupBy = '';
-        $orderBy = '';
-        $limit = 12;
-        $labelExpr = "a.event_date";
-
-        switch ($period) {
-            case 'weekly':
-                $groupBy = "YEARWEEK(a.event_date, 3)";
-                $orderBy = "yw DESC";
-                $limit = 12;
-                $labelExpr = "MIN(a.event_date)";
-                break;
-            case 'monthly':
-                $groupBy = "YEAR(a.event_date), MONTH(a.event_date)";
-                $orderBy = "yr DESC, mn DESC";
-                $limit = 12;
-                $labelExpr = "DATE_FORMAT(a.event_date, '%Y-%m-01')";
-                break;
-            case 'yearly':
-                $groupBy = "YEAR(a.event_date)";
-                $orderBy = "yr DESC";
-                $limit = 5;
-                $labelExpr = "CONCAT(YEAR(a.event_date), '-01-01')";
-                break;
-            default:
-                $period = 'monthly';
-                $groupBy = "YEAR(a.event_date), MONTH(a.event_date)";
-                $orderBy = "yr DESC, mn DESC";
-                $limit = 12;
-                $labelExpr = "DATE_FORMAT(a.event_date, '%Y-%m-01')";
-        }
-        $params[] = $limit;
-        $types .= 'i';
-
-        $selectGroup = $groupBy;
-        if ($period === 'weekly') {
-            $selectGroup = "YEARWEEK(a.event_date, 3) AS yw, " . $labelExpr . " AS period_label";
-        } elseif ($period === 'monthly') {
-            $selectGroup = "YEAR(a.event_date) AS yr, MONTH(a.event_date) AS mn, " . $labelExpr . " AS period_label";
-        } else {
-            $selectGroup = "YEAR(a.event_date) AS yr, " . $labelExpr . " AS period_label";
-        }
-
-        $sql = "SELECT {$selectGroup},
-                    SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) AS present,
-                    SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) AS absent,
-                    SUM(CASE WHEN a.status = 'present' AND COALESCE(a.is_first_timer, 0) = 1 THEN 1 ELSE 0 END) AS first_timer
-                FROM attendance a
-                WHERE {$where}
-                GROUP BY {$groupBy}
-                ORDER BY {$orderBy}
-                LIMIT ?";
-
-        $stmt = $this->db->prepare($sql);
-        if (!empty($params)) {
-            $stmt->bind_param($types, ...$params);
-        }
-        $stmt->execute();
-        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
-        $out = [];
-        foreach ($rows as $row) {
-            $rawLabel = $row['period_label'] ?? $row['yw'] ?? '';
-            if ($period === 'weekly' && $rawLabel) {
-                $label = date('M j', strtotime($rawLabel)) . ' (week)';
-            } elseif ($period === 'monthly' && $rawLabel) {
-                $label = date('M Y', strtotime($rawLabel));
-            } elseif ($period === 'yearly' && $rawLabel) {
-                $label = date('Y', strtotime($rawLabel));
-            } else {
-                $label = (string) $rawLabel;
-            }
-            $out[] = [
-                'label' => $label,
-                'present' => (int) ($row['present'] ?? 0),
-                'absent' => (int) ($row['absent'] ?? 0),
-                'first_timer' => (int) ($row['first_timer'] ?? 0),
-            ];
-        }
-        return array_reverse($out);
-    }
 
     /**
      * Create multiple attendance records (batch for roll-call submit).
@@ -551,5 +441,153 @@ class Attendance extends BaseModel {
         $stmt->bind_param("i", $churchId);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get aggregated attendance data for charts by period (weekly, monthly, yearly)
+     */
+    public function getChartDataByPeriod($period = 'monthly', array $unitIds = [], $churchId = null) {
+        $params = [];
+        $types = '';
+        $scopeConditions = [];
+
+        if (!empty($unitIds) || $churchId) {
+            if (!empty($unitIds)) {
+                $placeholders = implode(',', array_fill(0, count($unitIds), '?'));
+                $scopeConditions[] = "a.unit_id IN ({$placeholders})";
+                $params = array_merge($params, $unitIds);
+                $types .= str_repeat('i', count($unitIds));
+            }
+            if ($churchId) {
+                $scopeConditions[] = "(a.church_id = ? AND a.unit_id IS NULL)";
+                $params[] = (int)$churchId;
+                $types .= 'i';
+            }
+        }
+
+        $whereConditions = [];
+        if (!empty($scopeConditions)) {
+            $whereConditions[] = '(' . implode(' OR ', $scopeConditions) . ')';
+        }
+
+        switch ($period) {
+            case 'weekly':
+                $whereConditions[] = "a.event_date >= DATE_SUB(CURDATE(), INTERVAL 12 WEEK)";
+                $groupBy = "YEARWEEK(a.event_date, 1)";
+                $dateFormat = "DATE_FORMAT(MIN(a.event_date), 'Week %v (%b %d)')";
+                $limit = 12;
+                break;
+            case 'yearly':
+                $whereConditions[] = "a.event_date >= DATE_SUB(CURDATE(), INTERVAL 5 YEAR)";
+                $groupBy = "YEAR(a.event_date)";
+                $dateFormat = "DATE_FORMAT(a.event_date, '%Y')";
+                $limit = 5;
+                break;
+            case 'monthly':
+            default:
+                $whereConditions[] = "a.event_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)";
+                $groupBy = "DATE_FORMAT(a.event_date, '%Y-%m')";
+                $dateFormat = "DATE_FORMAT(a.event_date, '%b %Y')";
+                $limit = 12;
+                break;
+        }
+
+        $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
+
+        $sql = "SELECT 
+                    {$dateFormat} AS label,
+                    {$groupBy} AS period_key,
+                    SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) AS present,
+                    SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) AS absent,
+                    SUM(CASE WHEN a.is_first_timer = 1 THEN 1 ELSE 0 END) AS first_timer,
+                    COUNT(DISTINCT a.event_date, a.event_type) AS services_count
+                FROM attendance a
+                {$whereClause}
+                GROUP BY {$groupBy}
+                ORDER BY MIN(a.event_date) ASC
+                LIMIT {$limit}";
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            if (!empty($params)) {
+                $stmt->bind_param($types, ...$params);
+            }
+            $stmt->execute();
+            $results = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+            // If empty and churchId provided, try without date window fallback
+            if (empty($results) && !empty($scopeConditions)) {
+                $fallbackSql = "SELECT 
+                                    {$dateFormat} AS label,
+                                    {$groupBy} AS period_key,
+                                    SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) AS present,
+                                    SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) AS absent,
+                                    SUM(CASE WHEN a.is_first_timer = 1 THEN 1 ELSE 0 END) AS first_timer,
+                                    COUNT(DISTINCT a.event_date, a.event_type) AS services_count
+                                FROM attendance a
+                                WHERE (" . implode(' OR ', $scopeConditions) . ")
+                                GROUP BY {$groupBy}
+                                ORDER BY MIN(a.event_date) ASC
+                                LIMIT {$limit}";
+                $fallbackStmt = $this->db->prepare($fallbackSql);
+                if (!empty($params)) {
+                    $fallbackStmt->bind_param($types, ...$params);
+                }
+                $fallbackStmt->execute();
+                $results = $fallbackStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            }
+
+            return $results;
+        } catch (\Exception $e) {
+            error_log('Error getting chart data by period: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Get attendance breakdown by service/event type
+     */
+    public function getEventTypeBreakdown(array $unitIds = [], $churchId = null) {
+        $params = [];
+        $types = '';
+        $where = '1=1';
+
+        if (!empty($unitIds) || $churchId) {
+            $conditions = [];
+            if (!empty($unitIds)) {
+                $placeholders = implode(',', array_fill(0, count($unitIds), '?'));
+                $conditions[] = "a.unit_id IN ({$placeholders})";
+                $params = array_merge($params, $unitIds);
+                $types .= str_repeat('i', count($unitIds));
+            }
+            if ($churchId) {
+                $conditions[] = "(a.church_id = ? AND a.unit_id IS NULL)";
+                $params[] = (int)$churchId;
+                $types .= 'i';
+            }
+            $where = '(' . implode(' OR ', $conditions) . ')';
+        }
+
+        $sql = "SELECT 
+                    a.event_type,
+                    SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) as total_present,
+                    SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) as total_absent,
+                    COUNT(DISTINCT a.event_date, a.event_type) as total_sessions
+                FROM attendance a
+                WHERE {$where}
+                GROUP BY a.event_type
+                ORDER BY total_present DESC";
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            if (!empty($params)) {
+                $stmt->bind_param($types, ...$params);
+            }
+            $stmt->execute();
+            return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        } catch (\Exception $e) {
+            error_log('Error getting event type breakdown: ' . $e->getMessage());
+            return [];
+        }
     }
 }
