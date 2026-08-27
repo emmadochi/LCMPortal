@@ -474,33 +474,92 @@ class DashboardController extends BaseController {
         if ($this->session->get('user_role') === 'user') {
             $evangelismReportModel = new EvangelismReport();
             $notificationModel = new Notification();
+            $userId = (int)$this->session->get('user_id');
 
-            $data['evangelismReports'] = $evangelismReportModel->getReportsByUserId($this->session->get('user_id'));
-            $data['notifications'] = $notificationModel->getUnreadNotifications($this->session->get('user_id'));
+            $user = $userModel->find($userId);
+            $churchModel = new Church();
+            $church = !empty($user['church_id']) ? $churchModel->find($user['church_id']) : null;
+
+            $evangelismReports = $evangelismReportModel->getReportsByUserId($userId) ?: [];
+            $totalSoulsWon = 0;
+            foreach ($evangelismReports as $er) {
+                $totalSoulsWon += (int)($er['souls_won'] ?? 0);
+            }
+
+            $notifications = $notificationModel->getUnreadNotifications($userId) ?: [];
             
             // Enhanced Member Data
-            $userId = $this->session->get('user_id');
-            $data['assignedUnits'] = $userModel->getUnits($userId);
-            $data['attendanceSummary'] = $userModel->getPersonalAttendanceSummary($userId, 5);
-            $data['givingSummary'] = $userModel->getPersonalGivingSummary($userId);
-            $data['engagementScore'] = $userModel->getEngagementScore($userId);
-            $data['aiInsights'] = $userModel->getAIInsights($userId);
+            $assignedUnits = $userModel->getUnits($userId) ?: [];
+            $attendanceSummary = $userModel->getPersonalAttendanceSummary($userId, 6) ?: [];
+            $givingSummary = $userModel->getPersonalGivingSummary($userId) ?: ['total' => 0, 'this_year' => 0, 'last_transaction' => null];
+            $engagementScore = $userModel->getEngagementScore($userId);
+            $aiInsights = $userModel->getAIInsights($userId);
             
+            // Pledges summary
+            $pledgeModel = new \App\Models\Pledge();
+            $myPledges = $pledgeModel->getPledgesByMember($userId) ?: [];
+            $activePledgesCount = 0;
+            $totalPledged = 0.0;
+            $totalPaid = 0.0;
+            foreach ($myPledges as $p) {
+                $totalPledged += (float)($p['target_amount'] ?? 0);
+                $totalPaid += (float)($p['amount_paid'] ?? 0);
+                if (($p['status'] ?? '') !== 'fulfilled') {
+                    $activePledgesCount++;
+                }
+            }
+
+            // Monthly attendance trend over past 6 months
+            $attendanceTrend = [];
+            try {
+                $db = \App\Core\Database::getInstance();
+                $attSql = "SELECT DATE_FORMAT(event_date, '%b') as month_label, COUNT(*) as cnt 
+                           FROM attendance 
+                           WHERE user_id = ? AND status = 'present' AND event_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+                           GROUP BY DATE_FORMAT(event_date, '%Y-%m'), DATE_FORMAT(event_date, '%b')
+                           ORDER BY MIN(event_date) ASC";
+                $attStmt = $db->prepare($attSql);
+                $attStmt->bind_param("i", $userId);
+                $attStmt->execute();
+                $attendanceTrend = $attStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            } catch (\Exception $e) {
+                error_log('Error getting member attendance trend: ' . $e->getMessage());
+            }
+
             // Unit Leadership Data (if member is a director)
-            $data['isUnitHead'] = $this->session->isDirector();
-            $data['managedUnits'] = [];
-            if ($data['isUnitHead']) {
+            $isUnitHead = $this->session->isDirector();
+            $managedUnits = [];
+            if ($isUnitHead) {
                 $directorUnits = $this->session->getDirectorUnits();
                 foreach ($directorUnits as $unit) {
                     $unitStats = $unitModel->getHealthMetrics($unit['id']);
-                    $data['managedUnits'][] = [
+                    $managedUnits[] = [
                         'unit' => $unit,
                         'stats' => $unitStats
                     ];
                 }
             }
 
-            $this->render('dashboard/user_dashboard', $data);
+            $this->render('dashboard/user_dashboard', [
+                'title' => 'Member Dashboard',
+                'pageTitle' => 'My Dashboard',
+                'user' => $user,
+                'church' => $church,
+                'evangelismReports' => $evangelismReports,
+                'totalSoulsWon' => $totalSoulsWon,
+                'notifications' => $notifications,
+                'assignedUnits' => $assignedUnits,
+                'attendanceSummary' => $attendanceSummary,
+                'attendanceTrend' => $attendanceTrend,
+                'givingSummary' => $givingSummary,
+                'engagementScore' => $engagementScore,
+                'aiInsights' => $aiInsights,
+                'activePledgesCount' => $activePledgesCount,
+                'totalPledged' => $totalPledged,
+                'totalPaid' => $totalPaid,
+                'isUnitHead' => $isUnitHead,
+                'managedUnits' => $managedUnits
+            ]);
             return;
         }
 
