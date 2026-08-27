@@ -332,6 +332,141 @@ class Attendance extends BaseModel {
         return $out;
     }
 
+    /**
+     * Get comprehensive attendance report data for a church within a date range
+     */
+    public function getPeriodReportData($churchId, $startDate, $endDate, $unitId = null, $eventType = null) {
+        $churchModel = new Church();
+        $churchUnitIds = $churchModel->getChurchUnitIds($churchId);
+
+        $params = [];
+        $types = '';
+        $whereConditions = [];
+
+        // Date range
+        $whereConditions[] = "a.event_date >= ? AND a.event_date <= ?";
+        $params[] = $startDate;
+        $params[] = $endDate;
+        $types .= 'ss';
+
+        // Church scoping
+        if ($unitId !== null && $unitId !== '') {
+            $whereConditions[] = "a.unit_id = ?";
+            $params[] = (int)$unitId;
+            $types .= 'i';
+        } else {
+            $scopeParts = [];
+            if (!empty($churchUnitIds)) {
+                $placeholders = implode(',', array_fill(0, count($churchUnitIds), '?'));
+                $scopeParts[] = "a.unit_id IN ({$placeholders})";
+                $params = array_merge($params, $churchUnitIds);
+                $types .= str_repeat('i', count($churchUnitIds));
+            }
+            $scopeParts[] = "(a.church_id = ? AND a.unit_id IS NULL)";
+            $params[] = (int)$churchId;
+            $types .= 'i';
+            $whereConditions[] = '(' . implode(' OR ', $scopeParts) . ')';
+        }
+
+        // Optional event type
+        if (!empty($eventType)) {
+            $whereConditions[] = "a.event_type = ?";
+            $params[] = $eventType;
+            $types .= 's';
+        }
+
+        $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
+
+        // 1. Overall Summary & Demographics
+        $summarySql = "SELECT 
+                        SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) as total_present,
+                        SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) as total_absent,
+                        SUM(CASE WHEN a.status = 'present' AND COALESCE(a.is_first_timer, 0) = 1 THEN 1 ELSE 0 END) as first_timers,
+                        SUM(CASE WHEN a.status = 'present' AND COALESCE(a.is_first_timer, 0) = 0 THEN 1 ELSE 0 END) as returning_members,
+                        SUM(CASE WHEN a.status = 'present' AND (us.age_group = 'adult' OR us.age_group IS NULL OR us.age_group = '') THEN 1 ELSE 0 END) as adults,
+                        SUM(CASE WHEN a.status = 'present' AND us.age_group = 'teen' THEN 1 ELSE 0 END) as teens,
+                        SUM(CASE WHEN a.status = 'present' AND us.age_group = 'child' THEN 1 ELSE 0 END) as children,
+                        COUNT(DISTINCT a.event_date, a.event_type, COALESCE(a.unit_id, 0)) as total_sessions
+                       FROM attendance a
+                       LEFT JOIN users us ON a.user_id = us.id
+                       {$whereClause}";
+
+        $stmt = $this->db->prepare($summarySql);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $summary = $stmt->get_result()->fetch_assoc() ?: [
+            'total_present' => 0, 'total_absent' => 0, 'first_timers' => 0, 'returning_members' => 0,
+            'adults' => 0, 'teens' => 0, 'children' => 0, 'total_sessions' => 0
+        ];
+
+        // 2. Services list within the period
+        $servicesSql = "SELECT 
+                            a.unit_id, a.church_id, a.event_date, a.event_type,
+                            MAX(a.service_description) AS service_description,
+                            u.name AS unit_name,
+                            SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) AS present_count,
+                            SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) AS absent_count,
+                            SUM(CASE WHEN a.status = 'present' AND COALESCE(a.is_first_timer, 0) = 1 THEN 1 ELSE 0 END) AS first_timers_count
+                        FROM attendance a
+                        LEFT JOIN units u ON a.unit_id = u.id
+                        {$whereClause}
+                        GROUP BY a.unit_id, a.church_id, a.event_date, a.event_type
+                        ORDER BY a.event_date DESC, a.event_type ASC";
+
+        $stmt = $this->db->prepare($servicesSql);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $services = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 3. Service type breakdown
+        $eventSql = "SELECT 
+                        a.event_type,
+                        SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) as total_present,
+                        SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) as total_absent,
+                        COUNT(DISTINCT a.event_date, a.event_type, COALESCE(a.unit_id, 0)) as session_count
+                     FROM attendance a
+                     {$whereClause}
+                     GROUP BY a.event_type
+                     ORDER BY total_present DESC";
+
+        $stmt = $this->db->prepare($eventSql);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $eventBreakdown = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 4. Daily / Session Trend for chart
+        $trendSql = "SELECT 
+                        a.event_date,
+                        DATE_FORMAT(a.event_date, '%b %d') as date_label,
+                        SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) as present,
+                        SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) as absent,
+                        SUM(CASE WHEN a.status = 'present' AND COALESCE(a.is_first_timer, 0) = 1 THEN 1 ELSE 0 END) as first_timers
+                     FROM attendance a
+                     {$whereClause}
+                     GROUP BY a.event_date
+                     ORDER BY a.event_date ASC";
+
+        $stmt = $this->db->prepare($trendSql);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $trend = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        return [
+            'summary' => $summary,
+            'services' => $services,
+            'eventBreakdown' => $eventBreakdown,
+            'trend' => $trend
+        ];
+    }
+
 
 
     /**

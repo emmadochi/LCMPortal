@@ -95,21 +95,33 @@ class HeadPastorAttendanceController extends BaseHeadPastorController {
     public function report() {
         $startDate = $this->request->get('start_date', date('Y-m-01'));
         $endDate = $this->request->get('end_date', date('Y-m-t'));
+        $unitId = $this->request->get('unit_id', '');
+        $eventType = $this->request->get('event_type', '');
         
-        $segmentCounts = $this->attendanceModel->getServiceSegmentCounts(
-            null, // Multi-service report
+        $reportData = $this->attendanceModel->getPeriodReportData(
             $this->churchId,
             $startDate,
-            $endDate
+            $endDate,
+            $unitId !== '' ? (int)$unitId : null,
+            $eventType !== '' ? $eventType : null
         );
         
+        $churchUnits = $this->churchModel->getChurchUnits($this->churchId);
+
         $this->render('head-pastor/attendance/report', [
-            'title' => 'Attendance Report - ' . $this->church['name'],
+            'title' => 'Attendance Intelligence Report - ' . $this->church['name'],
             'pageTitle' => 'Attendance Report',
             'church' => $this->church,
             'startDate' => $startDate,
             'endDate' => $endDate,
-            'segmentCounts' => $segmentCounts
+            'selectedUnitId' => $unitId,
+            'selectedEventType' => $eventType,
+            'churchUnits' => $churchUnits,
+            'eventTypes' => Attendance::getEventTypes(),
+            'summary' => $reportData['summary'],
+            'services' => $reportData['services'],
+            'eventBreakdown' => $reportData['eventBreakdown'],
+            'trend' => $reportData['trend']
         ]);
     }
 
