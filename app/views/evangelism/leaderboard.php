@@ -7,14 +7,15 @@ $period = $period ?? 'month';
 $churchId = $churchId ?? null;
 $churches = $churches ?? [];
 $leaderboard = $leaderboard ?? [];
-$stats = $stats ?? [
-    'total_souls' => 0,
-    'total_soul_winners' => 0,
-    'total_outreach_sessions' => 0,
-    'avg_souls_per_outreach' => 0,
-    'top_department' => 'N/A',
-    'top_department_souls' => 0
-];
+$stats = $stats ?? [];
+
+$totalSouls = (int)($stats['total_souls'] ?? 0);
+$totalSoulWinners = (int)($stats['total_soul_winners'] ?? 0);
+$totalOutreachSessions = (int)($stats['total_outreach_sessions'] ?? 0);
+$avgSoulsPerOutreach = (float)($stats['avg_souls_per_outreach'] ?? 0);
+$topDepartment = $stats['top_department'] ?? 'General Outreach';
+$topDepartmentSouls = (int)($stats['top_department_souls'] ?? 0);
+
 $harvestTrends = $harvestTrends ?? ['labels' => [], 'data' => []];
 $unitBreakdown = $unitBreakdown ?? ['labels' => [], 'data' => []];
 $verificationLogs = $verificationLogs ?? [];
@@ -36,7 +37,7 @@ $periodLabels = [
 <div class="row mb-4 align-items-center">
     <div class="col-lg-6 col-md-12 mb-3 mb-lg-0">
         <div class="d-flex align-items-center gap-2 mb-1">
-            <span class="badge bg-warning bg-opacity-20 text-warning px-3 py-1.5 rounded-pill font-size-12 fw-bold" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3);">
+            <span class="badge px-3 py-1.5 rounded-pill font-size-12 fw-bold" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
                 <i class="bx bx-trophy me-1 align-middle"></i> Kingdom Harvest Awards
             </span>
             <span class="text-muted font-size-13">&bull; <?= $periodLabels[$period] ?? 'This Month' ?></span>
@@ -107,7 +108,7 @@ $periodLabels = [
                     </div>
                     <div class="flex-grow-1">
                         <p class="text-muted text-uppercase fw-semibold font-size-11 mb-1">Total Souls Won</p>
-                        <h3 class="mb-0 fw-bold text-dark font-size-22"><?= number_format($stats['total_souls']) ?></h3>
+                        <h3 class="mb-0 fw-bold text-dark font-size-22"><?= number_format($totalSouls) ?></h3>
                     </div>
                     <div class="flex-shrink-0 text-end">
                         <span class="badge font-size-11 mb-1 d-block" style="background: #fff3e0; color: #e65100;">Harvest</span>
@@ -130,7 +131,7 @@ $periodLabels = [
                     </div>
                     <div class="flex-grow-1">
                         <p class="text-muted text-uppercase fw-semibold font-size-11 mb-1">Active Soul Winners</p>
-                        <h3 class="mb-0 fw-bold text-dark font-size-22"><?= number_format($stats['total_soul_winners']) ?></h3>
+                        <h3 class="mb-0 fw-bold text-dark font-size-22"><?= number_format($totalSoulWinners) ?></h3>
                     </div>
                     <div class="flex-shrink-0 text-end">
                         <span class="badge font-size-11 mb-1 d-block" style="background: #e3f2fd; color: #1976d2;">Laborers</span>
@@ -153,11 +154,11 @@ $periodLabels = [
                     </div>
                     <div class="flex-grow-1">
                         <p class="text-muted text-uppercase fw-semibold font-size-11 mb-1">Outreach Velocity</p>
-                        <h3 class="mb-0 fw-bold text-dark font-size-22"><?= $stats['avg_souls_per_outreach'] ?></h3>
+                        <h3 class="mb-0 fw-bold text-dark font-size-22"><?= $avgSoulsPerOutreach ?></h3>
                     </div>
                     <div class="flex-shrink-0 text-end">
                         <span class="badge font-size-11 mb-1 d-block" style="background: #e8f5e9; color: #2e7d32;">Souls/Session</span>
-                        <small class="text-muted font-size-11"><?= $stats['total_outreach_sessions'] ?> Sessions</small>
+                        <small class="text-muted font-size-11"><?= $totalOutreachSessions ?> Sessions</small>
                     </div>
                 </div>
             </div>
@@ -176,12 +177,12 @@ $periodLabels = [
                     </div>
                     <div class="flex-grow-1">
                         <p class="text-muted text-uppercase fw-semibold font-size-11 mb-1">Top Department</p>
-                        <h4 class="mb-0 fw-bold text-dark font-size-16 text-truncate" style="max-width: 150px;" title="<?= htmlspecialchars($stats['top_department']) ?>">
-                            <?= htmlspecialchars($stats['top_department']) ?>
+                        <h4 class="mb-0 fw-bold text-dark font-size-16 text-truncate" style="max-width: 150px;" title="<?= htmlspecialchars($topDepartment) ?>">
+                            <?= htmlspecialchars($topDepartment) ?>
                         </h4>
                     </div>
                     <div class="flex-shrink-0 text-end">
-                        <span class="badge font-size-11 mb-1 d-block" style="background: #f3e5f5; color: #7b1fa2;"><?= $stats['top_department_souls'] ?> Souls</span>
+                        <span class="badge font-size-11 mb-1 d-block" style="background: #f3e5f5; color: #7b1fa2;"><?= $topDepartmentSouls ?> Souls</span>
                         <small class="text-muted font-size-11">Leading Unit</small>
                     </div>
                 </div>

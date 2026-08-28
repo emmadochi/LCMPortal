@@ -91,6 +91,15 @@ class EvangelismReport extends BaseModel {
      * Get Aggregated Executive Statistics for the Leaderboard
      */
     public function getLeaderboardStats($period = 'month', $churchId = null) {
+        $defaultStats = [
+            'total_souls' => 0,
+            'total_soul_winners' => 0,
+            'total_outreach_sessions' => 0,
+            'avg_souls_per_outreach' => 0,
+            'top_department' => 'General Outreach',
+            'top_department_souls' => 0
+        ];
+
         try {
             $db = Database::getInstance();
             $periodClause = $this->getPeriodWhereClause($period, 'e.report_date');
@@ -115,15 +124,20 @@ class EvangelismReport extends BaseModel {
                     JOIN users u ON u.id = e.user_id
                     WHERE $periodClause AND $churchClause";
 
+            $row = null;
             if (!empty($params)) {
                 $stmt = $db->prepare($sql);
-                $stmt->bind_param($types, ...$params);
-                $stmt->execute();
-                $stats = $stmt->get_result()->fetch_assoc() ?: [];
+                if ($stmt) {
+                    $stmt->bind_param($types, ...$params);
+                    $stmt->execute();
+                    $row = $stmt->get_result()->fetch_assoc();
+                }
             } else {
                 $res = $db->query($sql);
-                $stats = $res ? $res->fetch_assoc() : [];
+                $row = $res ? $res->fetch_assoc() : null;
             }
+
+            $stats = array_merge($defaultStats, $row ?: []);
 
             // Top Department in Soul Winning
             $deptSql = "SELECT un.name as dept_name, SUM(e.souls_won) as dept_souls
@@ -139,9 +153,11 @@ class EvangelismReport extends BaseModel {
             $topDept = null;
             if (!empty($params)) {
                 $stmtD = $db->prepare($deptSql);
-                $stmtD->bind_param($types, ...$params);
-                $stmtD->execute();
-                $topDept = $stmtD->get_result()->fetch_assoc();
+                if ($stmtD) {
+                    $stmtD->bind_param($types, ...$params);
+                    $stmtD->execute();
+                    $topDept = $stmtD->get_result()->fetch_assoc();
+                }
             } else {
                 $resD = $db->query($deptSql);
                 $topDept = $resD ? $resD->fetch_assoc() : null;
@@ -153,14 +169,7 @@ class EvangelismReport extends BaseModel {
             return $stats;
         } catch (\Exception $e) {
             error_log("EvangelismReport: Error getting stats: " . $e->getMessage());
-            return [
-                'total_souls' => 0,
-                'total_soul_winners' => 0,
-                'total_outreach_sessions' => 0,
-                'avg_souls_per_outreach' => 0,
-                'top_department' => 'N/A',
-                'top_department_souls' => 0
-            ];
+            return $defaultStats;
         }
     }
 
