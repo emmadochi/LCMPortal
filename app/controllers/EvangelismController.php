@@ -2,21 +2,31 @@
 namespace App\Controllers;
 
 use App\Models\EvangelismReport;
+use App\Models\EvangelismConvert;
+use App\Models\Church;
+use App\Models\User;
 use App\Utilities\Security;
+use App\Utilities\AssetHelper;
 
 class EvangelismController extends BaseController {
     private $evangelismReportModel;
+    private $convertModel;
 
     public function __construct() {
         parent::__construct();
         $this->evangelismReportModel = new EvangelismReport();
+        $this->convertModel = new EvangelismConvert();
         if (!$this->session->has('user_id')) {
             $this->redirect('/login');
         }
     }
 
     public function index() {
-        $reports = $this->evangelismReportModel->getReportsByUserId($this->session->get('user_id'));
+        $userId = (int)$this->session->get('user_id');
+        $reports = $this->evangelismReportModel->getReportsByUserId($userId);
+        $converts = $this->convertModel->getConvertsBySoulWinner($userId);
+        $careStats = $this->convertModel->getSoulWinnerCareStats($userId);
+        $commendations = $this->convertModel->getPastoralNotes($userId);
 
         $totalSouls = 0;
         $highestOutreach = 0;
@@ -31,11 +41,14 @@ class EvangelismController extends BaseController {
         $latestReport = !empty($reports) ? $reports[0]['report_date'] : null;
 
         $this->render('evangelism/index', [
-            'title' => 'Evangelism Reports',
-            'pageTitle' => 'My Evangelism Reports',
+            'title' => 'Evangelism & Soul Care Journal',
+            'pageTitle' => 'Evangelism & Soul Care Journal',
             'reports' => $reports,
+            'converts' => $converts,
+            'careStats' => $careStats,
+            'commendations' => $commendations,
             'userStats' => [
-                'total_souls' => $totalSouls,
+                'total_souls' => max($totalSouls, $careStats['total_converts']),
                 'total_logs' => $totalLogs,
                 'highest_outreach' => $highestOutreach,
                 'latest_report' => $latestReport
@@ -47,8 +60,8 @@ class EvangelismController extends BaseController {
         $csrfToken = Security::generateCSRFToken();
 
         $this->render('evangelism/create', [
-            'title' => 'New Evangelism Report',
-            'pageTitle' => 'New Evangelism Report',
+            'title' => 'Log Outreach & Converts',
+            'pageTitle' => 'Log Outreach & Converts',
             'csrf_token' => $csrfToken
         ]);
     }
@@ -57,7 +70,7 @@ class EvangelismController extends BaseController {
         $token = $this->request->post('_token');
         if (!Security::validateCSRFToken($token)) {
             $this->session->setFlash('error', 'Invalid security token.');
-            $this->redirect('/evangelism/create');
+            $this->redirect('/evangelism');
         }
 
         $validation = $this->validate([
@@ -70,20 +83,183 @@ class EvangelismController extends BaseController {
             $this->redirect('/evangelism/create');
         }
 
+        $userId = (int)$this->session->get('user_id');
+        $churchId = $this->session->get('church_id') ?? null;
+        $soulsWon = (int)$this->request->post('souls_won');
+
         $data = [
-            'user_id' => $this->session->get('user_id'),
+            'user_id' => $userId,
+            'church_id' => $churchId,
             'report_date' => $this->request->post('report_date'),
-            'souls_won' => $this->request->post('souls_won'),
+            'souls_won' => $soulsWon,
             'notes' => $this->request->post('notes')
         ];
 
-        if ($this->evangelismReportModel->create($data)) {
-            $this->session->setFlash('success', 'Evangelism report submitted successfully.');
+        $reportId = $this->evangelismReportModel->create($data);
+
+        if ($reportId) {
+            // Check if structured convert details were also submitted
+            $convertNames = $this->request->post('convert_name');
+            $convertPhones = $this->request->post('convert_phone');
+            $convertEmails = $this->request->post('convert_email');
+            $convertDecisions = $this->request->post('convert_decision');
+            $convertPrayers = $this->request->post('convert_prayer');
+
+            if (is_array($convertNames)) {
+                foreach ($convertNames as $idx => $cName) {
+                    $cName = trim($cName);
+                    if (!empty($cName)) {
+                        $this->convertModel->createConvert([
+                            'report_id' => $reportId,
+                            'soul_winner_id' => $userId,
+                            'church_id' => $churchId,
+                            'full_name' => $cName,
+                            'phone' => $convertPhones[$idx] ?? '',
+                            'email' => $convertEmails[$idx] ?? '',
+                            'decision_type' => $convertDecisions[$idx] ?? 'salvation',
+                            'prayer_requests' => $convertPrayers[$idx] ?? '',
+                            'status' => 'new'
+                        ]);
+                    }
+                }
+            }
+
+            $this->session->setFlash('success', 'Evangelism outreach and convert details recorded successfully!');
             $this->redirect('/evangelism');
         } else {
-            $this->session->setFlash('error', 'Failed to submit report.');
+            $this->session->setFlash('error', 'Failed to submit outreach report.');
             $this->redirect('/evangelism/create');
         }
+    }
+
+    public function convertStore() {
+        $token = $this->request->post('_token');
+        if (!Security::validateCSRFToken($token)) {
+            $this->session->setFlash('error', 'Invalid security token.');
+            $this->redirect('/evangelism');
+        }
+
+        $fullName = trim($this->request->post('full_name'));
+        if (empty($fullName)) {
+            $this->session->setFlash('error', 'Convert full name is required.');
+            $this->redirect('/evangelism');
+        }
+
+        $userId = (int)$this->session->get('user_id');
+        $churchId = $this->session->get('church_id') ?? null;
+
+        $createdId = $this->convertModel->createConvert([
+            'soul_winner_id' => $userId,
+            'church_id' => $churchId,
+            'full_name' => $fullName,
+            'phone' => $this->request->post('phone'),
+            'email' => $this->request->post('email'),
+            'address' => $this->request->post('address'),
+            'gender' => $this->request->post('gender'),
+            'decision_type' => $this->request->post('decision_type', 'salvation'),
+            'prayer_requests' => $this->request->post('prayer_requests'),
+            'next_followup_date' => $this->request->post('next_followup_date'),
+            'status' => 'new'
+        ]);
+
+        if ($createdId) {
+            // Also log an automatic evangelism count record if requested
+            $this->evangelismReportModel->create([
+                'user_id' => $userId,
+                'church_id' => $churchId,
+                'report_date' => date('Y-m-d'),
+                'souls_won' => 1,
+                'notes' => 'Soul won: ' . $fullName . ' (' . ($this->request->post('decision_type', 'salvation')) . ')'
+            ]);
+
+            $this->session->setFlash('success', "Convert '{$fullName}' added to your Follow-up Care pipeline!");
+        } else {
+            $this->session->setFlash('error', 'Failed to add convert.');
+        }
+
+        $this->redirect('/evangelism');
+    }
+
+    public function convertShow($id) {
+        $convert = $this->convertModel->getConvertById((int)$id);
+        $userId = (int)$this->session->get('user_id');
+
+        if (!$convert) {
+            $this->session->setFlash('error', 'Convert record not found.');
+            $this->redirect('/evangelism');
+        }
+
+        // Only allow soul winner or pastors/admins
+        $isAdminOrPastor = $this->session->isAdmin() || $this->session->isHeadPastor();
+        if ((int)$convert['soul_winner_id'] !== $userId && !$isAdminOrPastor) {
+            $this->session->setFlash('error', 'Access denied.');
+            $this->redirect('/evangelism');
+        }
+
+        $followupLogs = $this->convertModel->getFollowupLogs((int)$id);
+
+        $this->render('evangelism/convert_show', [
+            'title' => 'Convert Care: ' . $convert['full_name'],
+            'pageTitle' => 'Convert Care Profile',
+            'convert' => $convert,
+            'followupLogs' => $followupLogs
+        ]);
+    }
+
+    public function updateMilestone($id) {
+        $token = $this->request->post('_token');
+        if (!Security::validateCSRFToken($token)) {
+            if ($this->request->isAjax()) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'CSRF error']);
+                exit;
+            }
+            $this->session->setFlash('error', 'Invalid security token.');
+            $this->redirect('/evangelism');
+        }
+
+        $milestone = $this->request->post('milestone');
+        $value = $this->request->post('value');
+
+        $updated = $this->convertModel->updateMilestone((int)$id, $milestone, $value);
+
+        if ($this->request->isAjax()) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => (bool)$updated]);
+            exit;
+        }
+
+        $this->session->setFlash('success', 'Spiritual milestone updated!');
+        $this->redirect('/evangelism/converts/' . (int)$id);
+    }
+
+    public function addFollowupLog($id) {
+        $token = $this->request->post('_token');
+        if (!Security::validateCSRFToken($token)) {
+            $this->session->setFlash('error', 'Invalid security token.');
+            $this->redirect('/evangelism/converts/' . (int)$id);
+        }
+
+        $userId = (int)$this->session->get('user_id');
+        $data = [
+            'contact_method' => $this->request->post('contact_method'),
+            'outcome' => $this->request->post('outcome'),
+            'notes' => $this->request->post('notes'),
+            'next_action_date' => $this->request->post('next_action_date'),
+            'milestone_updated' => $this->request->post('milestone_updated')
+        ];
+
+        if ($this->convertModel->addFollowupLog((int)$id, $userId, $data)) {
+            // If milestone was checked in form, update it too
+            if (!empty($data['milestone_updated'])) {
+                $this->convertModel->updateMilestone((int)$id, $data['milestone_updated'], 1);
+            }
+            $this->session->setFlash('success', 'Follow-up touchpoint recorded successfully!');
+        } else {
+            $this->session->setFlash('error', 'Failed to record follow-up log.');
+        }
+
+        $this->redirect('/evangelism/converts/' . (int)$id);
     }
 
     public function show($id) {
@@ -100,17 +276,19 @@ class EvangelismController extends BaseController {
     }
 
     public function edit($id) {
-        $csrfToken = Security::generateCSRFToken();
         $record = $this->evangelismReportModel->find((int)$id);
         if (!$record || (int)$record['user_id'] !== (int)$this->session->get('user_id')) {
             $this->session->setFlash('error', 'Report not found or access denied.');
             $this->redirect('/evangelism');
         }
+
+        $csrfToken = Security::generateCSRFToken();
+
         $this->render('evangelism/edit', [
             'title' => 'Edit Evangelism Report',
             'pageTitle' => 'Edit Evangelism Report',
-            'csrf_token' => $csrfToken,
-            'record' => $record
+            'record' => $record,
+            'csrf_token' => $csrfToken
         ]);
     }
 
@@ -118,7 +296,7 @@ class EvangelismController extends BaseController {
         $token = $this->request->post('_token');
         if (!Security::validateCSRFToken($token)) {
             $this->session->setFlash('error', 'Invalid security token.');
-            $this->redirect("/evangelism/{$id}/edit");
+            $this->redirect('/evangelism');
         }
 
         $record = $this->evangelismReportModel->find((int)$id);
@@ -131,6 +309,7 @@ class EvangelismController extends BaseController {
             'report_date' => 'required|date',
             'souls_won' => 'required|numeric'
         ]);
+
         if (!$validation['valid']) {
             $this->session->setFlash('errors', $validation['errors']);
             $this->redirect("/evangelism/{$id}/edit");
@@ -144,7 +323,7 @@ class EvangelismController extends BaseController {
 
         if ($this->evangelismReportModel->update((int)$id, $data)) {
             $this->session->setFlash('success', 'Report updated successfully.');
-            $this->redirect("/evangelism/{$id}");
+            $this->redirect('/evangelism');
         } else {
             $this->session->setFlash('error', 'Failed to update report.');
             $this->redirect("/evangelism/{$id}/edit");
@@ -184,7 +363,7 @@ class EvangelismController extends BaseController {
             $churchId = $this->session->getHeadPastorChurchId();
         }
 
-        $churchModel = new \App\Models\Church();
+        $churchModel = new Church();
         $churches = $churchModel->findAll(['status' => 'active'], 'name ASC');
 
         $leaderboard = $this->evangelismReportModel->getLeaderboard($period, $churchId, 50);
@@ -217,7 +396,7 @@ class EvangelismController extends BaseController {
                 'harvestTrends' => $harvestTrends,
                 'unitBreakdown' => $unitBreakdown,
                 'verificationLogs' => $verificationLogs,
-                'exportUrl' => \App\Utilities\AssetHelper::url('evangelism/leaderboard/export?period=' . $period . ($churchId ? '&church_id=' . $churchId : ''))
+                'exportUrl' => AssetHelper::url('evangelism/leaderboard/export?period=' . $period . ($churchId ? '&church_id=' . $churchId : ''))
             ]);
             exit;
         }
@@ -236,6 +415,86 @@ class EvangelismController extends BaseController {
         ]);
     }
 
+    public function memberDetail($id) {
+        $userId = (int)$id;
+        $userModel = new User();
+        $targetUser = $userModel->find($userId);
+
+        if (!$targetUser) {
+            if ($this->request->isAjax()) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'User not found']);
+                exit;
+            }
+            $this->redirect('/evangelism/leaderboard');
+        }
+
+        $converts = $this->convertModel->getConvertsBySoulWinner($userId, 50);
+        $careStats = $this->convertModel->getSoulWinnerCareStats($userId);
+        $commendations = $this->convertModel->getPastoralNotes($userId);
+        $reports = $this->evangelismReportModel->getReportsByUserId($userId);
+
+        if ($this->request->isAjax()) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'user' => [
+                    'id' => $targetUser['id'],
+                    'name' => $targetUser['name'],
+                    'email' => $targetUser['email']
+                ],
+                'careStats' => $careStats,
+                'converts' => $converts,
+                'commendations' => $commendations,
+                'reportCount' => count($reports)
+            ]);
+            exit;
+        }
+
+        $this->render('evangelism/member_detail', [
+            'title' => 'Harvest Portfolio: ' . $targetUser['name'],
+            'pageTitle' => 'Soul Winner Portfolio',
+            'targetUser' => $targetUser,
+            'careStats' => $careStats,
+            'converts' => $converts,
+            'commendations' => $commendations,
+            'reports' => $reports
+        ]);
+    }
+
+    public function addCommendation() {
+        $token = $this->request->post('_token');
+        if (!Security::validateCSRFToken($token)) {
+            $this->session->setFlash('error', 'Invalid security token.');
+            $this->redirect('/evangelism/leaderboard');
+        }
+
+        // Only allow admins or pastors to leave official commendations
+        if (!$this->session->isAdmin() && !$this->session->isHeadPastor()) {
+            $this->session->setFlash('error', 'Only Pastors and Administrators can leave official pastoral commendations.');
+            $this->redirect('/evangelism/leaderboard');
+        }
+
+        $targetUserId = (int)$this->request->post('user_id');
+        $pastorId = (int)$this->session->get('user_id');
+        $churchId = $this->session->get('church_id') ?? null;
+        $message = trim($this->request->post('message'));
+        $badgeType = $this->request->post('badge_type', 'commendation');
+
+        if (empty($message)) {
+            $this->session->setFlash('error', 'Message cannot be empty.');
+            $this->redirect('/evangelism/leaderboard');
+        }
+
+        if ($this->convertModel->addPastoralNote($targetUserId, $pastorId, $churchId, $message, $badgeType)) {
+            $this->session->setFlash('success', 'Pastoral commendation posted to the soul winner!');
+        } else {
+            $this->session->setFlash('error', 'Failed to post commendation.');
+        }
+
+        $this->redirect('/evangelism/leaderboard');
+    }
+
     public function exportLeaderboard() {
         $period = $this->request->get('period', 'month');
         $churchId = $this->request->get('church_id');
@@ -247,73 +506,59 @@ class EvangelismController extends BaseController {
 
         $headers = ['Rank', 'Member Name', 'Email', 'Church Branch', 'Department', 'Total Souls Won', 'Outreach Reports', 'Latest Outreach'];
         $rows = [];
+
         $rank = 1;
         foreach ($leaderboard as $row) {
             $rows[] = [
-                '#' . $rank++,
+                $rank++,
                 $row['user_name'],
                 $row['user_email'],
                 $row['church_name'] ?? 'General',
                 $row['unit_name'] ?? 'General',
                 (int)$row['total_souls'],
                 (int)$row['report_count'],
-                $row['latest_outreach'] ? date('M d, Y', strtotime($row['latest_outreach'])) : 'N/A'
+                $row['latest_outreach'] ? date('Y-m-d', strtotime($row['latest_outreach'])) : 'N/A'
             ];
         }
 
-        $baseName = 'soul_winner_leaderboard_' . $period . '_' . date('Y-m-d_His');
-        \App\Utilities\ExportHelper::exportCSV($rows, $headers, $baseName . '.csv');
+        $filename = 'soul_winner_leaderboard_' . $period . '_' . date('Y-m-d') . '.csv';
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=' . $filename);
+
+        $output = fopen('php://output', 'w');
+        fputcsv($output, $headers);
+        foreach ($rows as $row) {
+            fputcsv($output, $row);
+        }
+        fclose($output);
+        exit;
     }
 
     public function export() {
-        $userId = (int)$this->session->get('user_id');
-        $dateFrom = $this->request->get('date_from');
-        $dateTo = $this->request->get('date_to');
-
-        $conditions = ['user_id' => $userId];
-        $orderBy = 'report_date DESC';
-
-        // Basic filter in memory if date range provided
-        $reports = $this->evangelismReportModel->findAll($conditions, $orderBy);
-        if ($dateFrom || $dateTo) {
-            $df = $dateFrom ? strtotime($dateFrom) : null;
-            $dt = $dateTo ? strtotime($dateTo) : null;
-            $reports = array_filter($reports, function($r) use ($df, $dt) {
-                $rd = strtotime($r['report_date']);
-                if ($df && $rd < $df) return false;
-                if ($dt && $rd > $dt) return false;
-                return true;
-            });
-        }
+        $reports = $this->evangelismReportModel->getReportsByUserId($this->session->get('user_id'));
 
         $headers = ['Report Date', 'Souls Won', 'Notes', 'Submitted On'];
         $rows = [];
-        foreach ($reports as $r) {
+
+        foreach ($reports as $report) {
             $rows[] = [
-                $r['report_date'],
-                $r['souls_won'],
-                $r['notes'] ?? '',
-                $r['created_at'] ?? ''
+                $report['report_date'],
+                $report['souls_won'],
+                $report['notes'] ?? '',
+                $report['created_at']
             ];
         }
 
-        $format = strtolower($this->request->get('format', 'csv'));
-        $baseName = 'evangelism_reports_user_' . $userId . '_' . date('Y-m-d_His');
-        switch ($format) {
-            case 'json':
-                \App\Utilities\ExportHelper::exportJSON(array_values($rows), $baseName . '.json');
-                break;
-            case 'pdf':
-                \App\Utilities\ExportHelper::exportPDF($rows, $headers, 'Evangelism Reports', $baseName . '.pdf');
-                break;
-            case 'excel':
-            case 'xls':
-            case 'xlsx':
-                \App\Utilities\ExportHelper::exportExcel($rows, $headers, $baseName . '.xls');
-                break;
-            default:
-                \App\Utilities\ExportHelper::exportCSV($rows, $headers, $baseName . '.csv');
-                break;
+        $filename = 'my_evangelism_reports_' . date('Y-m-d') . '.csv';
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename=' . $filename);
+
+        $output = fopen('php://output', 'w');
+        fputcsv($output, $headers);
+        foreach ($rows as $row) {
+            fputcsv($output, $row);
         }
+        fclose($output);
+        exit;
     }
 }

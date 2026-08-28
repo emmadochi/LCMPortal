@@ -661,15 +661,36 @@ $router->group('/properties', function($router) {
     $router->get('/{id}', 'PropertyController@show');
     $router->get('/{id}/edit', 'PropertyController@edit');
     $router->put('/{id}', 'PropertyController@update');
-    $router->post('/{id}/status', 'PropertyController@updateStatus');
-    $router->post('/{id}/assign', 'PropertyController@assign');
     $router->post('/{id}/transfer', 'PropertyController@transfer');
     $router->delete('/{id}', 'PropertyController@delete');
 }, [AuthMiddleware::class]);
 
+// ── Evangelism, Soul Winning & Follow-Up Care Routes ─────────────────────────
+$router->group('/evangelism', function($router) {
+    // Leaderboard & Executive Analytics
+    $router->get('/leaderboard', 'EvangelismController@leaderboard');
+    $router->get('/leaderboard/export', 'EvangelismController@exportLeaderboard');
+    $router->get('/leaderboard/member/{id}', 'EvangelismController@memberDetail');
+    $router->post('/leaderboard/commend', 'EvangelismController@addCommendation');
 
+    // Convert Follow-Up & Care Engine
+    $router->post('/converts/store', 'EvangelismController@convertStore');
+    $router->get('/converts/{id}', 'EvangelismController@convertShow');
+    $router->post('/converts/{id}/milestone', 'EvangelismController@updateMilestone');
+    $router->post('/converts/{id}/followup', 'EvangelismController@addFollowupLog');
 
-
+    // Outreach Journal Reports
+    $router->get('', 'EvangelismController@index');
+    $router->get('/create', 'EvangelismController@create');
+    $router->post('', 'EvangelismController@store');
+    $router->post('/store', 'EvangelismController@store');
+    $router->get('/export', 'EvangelismController@export');
+    $router->get('/{id}', 'EvangelismController@show');
+    $router->get('/{id}/edit', 'EvangelismController@edit');
+    $router->put('/{id}', 'EvangelismController@update');
+    $router->post('/{id}/delete', 'EvangelismController@delete');
+    $router->delete('/{id}', 'EvangelismController@delete');
+}, [AuthMiddleware::class]);
 
 // Admin Password Reset Requests Routes
 $router->group('/admin/password-reset-requests', function($router) {

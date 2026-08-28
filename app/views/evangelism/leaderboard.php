@@ -444,7 +444,11 @@ $periodLabels = [
                                                         <?= strtoupper(substr($row['user_name'], 0, 2)) ?>
                                                     </div>
                                                     <div>
-                                                        <h6 class="mb-0 fw-bold text-dark font-size-13"><?= htmlspecialchars($row['user_name']) ?></h6>
+                                                        <h6 class="mb-0 font-size-13">
+                                                            <a href="<?= AssetHelper::url('evangelism/leaderboard/member/' . (int)$row['user_id']) ?>" class="fw-bold text-dark text-decoration-none">
+                                                                <?= htmlspecialchars($row['user_name']) ?>
+                                                            </a>
+                                                        </h6>
                                                         <small class="text-muted font-size-11"><?= htmlspecialchars($row['user_email']) ?></small>
                                                     </div>
                                                 </div>
@@ -467,6 +471,9 @@ $periodLabels = [
                                                 <span class="badge rounded-pill px-3 py-1.5 font-size-13 fw-bold" style="background: #e8f5e9; color: #2e7d32;">
                                                     +<?= number_format($row['total_souls']) ?> Souls
                                                 </span>
+                                                <a href="<?= AssetHelper::url('evangelism/leaderboard/member/' . (int)$row['user_id']) ?>" class="btn btn-sm btn-light border rounded-pill px-2 ms-1" title="View Portfolio & Commendations">
+                                                    <i class="bx bx-show"></i>
+                                                </a>
                                             </td>
                                         </tr>
                                     <?php $rank++; endforeach; ?>
@@ -896,8 +903,7 @@ $periodLabels = [
                             <div class="avatar-xs rounded-circle me-2 d-flex align-items-center justify-content-center font-size-12 fw-bold" style="background: #e0e7ff; color: #4338ca;">
                                 ${escapeHtml(initial)}
                             </div>
-                            <div>
-                                <h6 class="mb-0 fw-bold text-dark font-size-13">${escapeHtml(row.user_name)}</h6>
+                                <h6><a href="<?= AssetHelper::url('evangelism/leaderboard/member/') ?>${row.user_id}" class="mb-0 fw-bold text-dark font-size-13 text-decoration-none text-primary-hover">${escapeHtml(row.user_name)}</a></h6>
                                 <small class="text-muted font-size-11">${escapeHtml(row.user_email)}</small>
                             </div>
                         </div>
@@ -920,6 +926,9 @@ $periodLabels = [
                         <span class="badge rounded-pill px-3 py-1.5 font-size-13 fw-bold" style="background: #e8f5e9; color: #2e7d32;">
                             +${Number(row.total_souls).toLocaleString()} Souls
                         </span>
+                        <a href="<?= AssetHelper::url('evangelism/leaderboard/member/') ?>${row.user_id}" class="btn btn-sm btn-light border rounded-pill px-2 ms-1" title="View Portfolio & Commendations">
+                            <i class="bx bx-show"></i>
+                        </a>
                     </td>
                 </tr>
             `;
