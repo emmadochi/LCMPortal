@@ -85,9 +85,14 @@ class EvangelismConvert {
                     ORDER BY c.created_at DESC
                     LIMIT ?";
             $stmt = $this->db->prepare($sql);
+            if (!$stmt) {
+                error_log("EvangelismConvert getConvertsBySoulWinner prepare failed: " . $this->db->error);
+                return [];
+            }
             $stmt->bind_param("ii", $userId, $limit);
             $stmt->execute();
-            return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $result = $stmt->get_result();
+            return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
         } catch (\Exception $e) {
             error_log("EvangelismConvert: Error getting converts: " . $e->getMessage());
             return [];
@@ -102,9 +107,14 @@ class EvangelismConvert {
                     LEFT JOIN churches ch ON ch.id = c.church_id
                     WHERE c.id = ? LIMIT 1";
             $stmt = $this->db->prepare($sql);
+            if (!$stmt) {
+                error_log("EvangelismConvert getConvertById prepare failed: " . $this->db->error);
+                return null;
+            }
             $stmt->bind_param("i", $id);
             $stmt->execute();
-            return $stmt->get_result()->fetch_assoc();
+            $result = $stmt->get_result();
+            return $result ? $result->fetch_assoc() : null;
         } catch (\Exception $e) {
             error_log("EvangelismConvert: Error finding convert: " . $e->getMessage());
             return null;
@@ -117,6 +127,10 @@ class EvangelismConvert {
                     (report_id, soul_winner_id, church_id, full_name, phone, email, address, gender, decision_type, prayer_requests, status, next_followup_date)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt = $this->db->prepare($sql);
+            if (!$stmt) {
+                error_log("EvangelismConvert createConvert prepare failed: " . $this->db->error);
+                return false;
+            }
 
             $reportId = !empty($data['report_id']) ? (int)$data['report_id'] : null;
             $soulWinnerId = (int)$data['soul_winner_id'];
@@ -136,7 +150,7 @@ class EvangelismConvert {
             );
 
             if ($stmt->execute()) {
-                return $this->db->getLastInsertId();
+                return $this->db->insert_id ?: true;
             }
             return false;
         } catch (\Exception $e) {
@@ -159,11 +173,13 @@ class EvangelismConvert {
             if ($milestone === 'department_joined' || $milestone === 'status') {
                 $sql = "UPDATE evangelism_converts SET {$milestone} = ? WHERE id = ?";
                 $stmt = $this->db->prepare($sql);
+                if (!$stmt) return false;
                 $valStr = (string)$value;
                 $stmt->bind_param("si", $valStr, $convertId);
             } else {
                 $sql = "UPDATE evangelism_converts SET {$milestone} = ? WHERE id = ?";
                 $stmt = $this->db->prepare($sql);
+                if (!$stmt) return false;
                 $valInt = (int)$value;
                 $stmt->bind_param("ii", $valInt, $convertId);
             }
@@ -181,6 +197,10 @@ class EvangelismConvert {
                     (convert_id, user_id, contact_method, outcome, notes, milestone_updated, next_action_date)
                     VALUES (?, ?, ?, ?, ?, ?, ?)";
             $stmt = $this->db->prepare($sql);
+            if (!$stmt) {
+                error_log("EvangelismConvert addFollowupLog prepare failed: " . $this->db->error);
+                return false;
+            }
 
             $contactMethod = $data['contact_method'] ?? 'phone_call';
             $outcome = $data['outcome'] ?? 'reached_receptive';
@@ -214,9 +234,14 @@ class EvangelismConvert {
                     WHERE f.convert_id = ?
                     ORDER BY f.created_at DESC";
             $stmt = $this->db->prepare($sql);
+            if (!$stmt) {
+                error_log("EvangelismConvert getFollowupLogs prepare failed: " . $this->db->error);
+                return [];
+            }
             $stmt->bind_param("i", $convertId);
             $stmt->execute();
-            return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $result = $stmt->get_result();
+            return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
         } catch (\Exception $e) {
             error_log("EvangelismConvert: Error getting followup logs: " . $e->getMessage());
             return [];
@@ -227,18 +252,31 @@ class EvangelismConvert {
         try {
             $sql = "SELECT 
                         COUNT(id) as total_converts,
-                        SUM(first_contact_done) as contacted_count,
-                        SUM(attended_service) as attended_church_count,
-                        SUM(baptized_holy_ghost) as holy_ghost_baptized_count,
-                        SUM(baptized_water) as water_baptized_count,
-                        SUM(foundation_class_enrolled) as foundation_enrolled_count,
-                        SUM(CASE WHEN department_joined IS NOT NULL AND department_joined != '' THEN 1 ELSE 0 END) as integrated_department_count
+                        COALESCE(SUM(first_contact_done), 0) as contacted_count,
+                        COALESCE(SUM(attended_service), 0) as attended_church_count,
+                        COALESCE(SUM(baptized_holy_ghost), 0) as holy_ghost_baptized_count,
+                        COALESCE(SUM(baptized_water), 0) as water_baptized_count,
+                        COALESCE(SUM(foundation_class_enrolled), 0) as foundation_enrolled_count,
+                        COALESCE(SUM(CASE WHEN department_joined IS NOT NULL AND department_joined != '' THEN 1 ELSE 0 END), 0) as integrated_department_count
                     FROM evangelism_converts
                     WHERE soul_winner_id = ?";
             $stmt = $this->db->prepare($sql);
+            if (!$stmt) {
+                error_log("EvangelismConvert getSoulWinnerCareStats prepare failed: " . $this->db->error);
+                return [
+                    'total_converts' => 0,
+                    'contacted_count' => 0,
+                    'attended_church_count' => 0,
+                    'holy_ghost_baptized_count' => 0,
+                    'water_baptized_count' => 0,
+                    'foundation_enrolled_count' => 0,
+                    'integrated_department_count' => 0
+                ];
+            }
             $stmt->bind_param("i", $userId);
             $stmt->execute();
-            $res = $stmt->get_result()->fetch_assoc();
+            $result = $stmt->get_result();
+            $res = $result ? $result->fetch_assoc() : [];
             
             return [
                 'total_converts' => (int)($res['total_converts'] ?? 0),
@@ -267,6 +305,10 @@ class EvangelismConvert {
         try {
             $sql = "INSERT INTO evangelism_pastoral_notes (user_id, pastor_id, church_id, message, badge_type) VALUES (?, ?, ?, ?, ?)";
             $stmt = $this->db->prepare($sql);
+            if (!$stmt) {
+                error_log("EvangelismConvert addPastoralNote prepare failed: " . $this->db->error);
+                return false;
+            }
             $stmt->bind_param("iiiss", $soulWinnerId, $pastorId, $churchId, $message, $badgeType);
             return $stmt->execute();
         } catch (\Exception $e) {
@@ -284,9 +326,14 @@ class EvangelismConvert {
                     WHERE p.user_id = ?
                     ORDER BY p.created_at DESC";
             $stmt = $this->db->prepare($sql);
+            if (!$stmt) {
+                error_log("EvangelismConvert getPastoralNotes prepare failed: " . $this->db->error);
+                return [];
+            }
             $stmt->bind_param("i", $userId);
             $stmt->execute();
-            return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $result = $stmt->get_result();
+            return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
         } catch (\Exception $e) {
             error_log("EvangelismConvert: Error getting pastoral notes: " . $e->getMessage());
             return [];
