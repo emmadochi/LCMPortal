@@ -18,10 +18,28 @@ class EvangelismController extends BaseController {
     public function index() {
         $reports = $this->evangelismReportModel->getReportsByUserId($this->session->get('user_id'));
 
+        $totalSouls = 0;
+        $highestOutreach = 0;
+        foreach ($reports as $r) {
+            $s = (int)($r['souls_won'] ?? 0);
+            $totalSouls += $s;
+            if ($s > $highestOutreach) {
+                $highestOutreach = $s;
+            }
+        }
+        $totalLogs = count($reports);
+        $latestReport = !empty($reports) ? $reports[0]['report_date'] : null;
+
         $this->render('evangelism/index', [
             'title' => 'Evangelism Reports',
             'pageTitle' => 'My Evangelism Reports',
-            'reports' => $reports
+            'reports' => $reports,
+            'userStats' => [
+                'total_souls' => $totalSouls,
+                'total_logs' => $totalLogs,
+                'highest_outreach' => $highestOutreach,
+                'latest_report' => $latestReport
+            ]
         ]);
     }
 
