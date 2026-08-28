@@ -48,10 +48,10 @@ $attendanceCount = count($attendanceSummary);
                 <div class="row align-items-center position-relative">
                     <div class="col-lg-8 col-md-12 mb-4 mb-lg-0">
                         <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                            <span class="badge bg-primary bg-opacity-25 text-white px-3 py-1 rounded-pill font-size-12">
+                            <span class="badge px-3 py-1.5 rounded-pill font-size-12 fw-semibold" style="background: rgba(255, 255, 255, 0.15); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.25);">
                                 <i class="bx bx-church me-1 align-middle"></i> <?= htmlspecialchars($church['name'] ?? 'Life Changers Church') ?>
                             </span>
-                            <span class="badge bg-<?= $tierColor ?> bg-opacity-25 text-white px-3 py-1 rounded-pill font-size-12">
+                            <span class="badge px-3 py-1.5 rounded-pill font-size-12 fw-semibold" style="background: rgba(56, 239, 125, 0.2); color: #38ef7d; border: 1px solid rgba(56, 239, 125, 0.4);">
                                 <i class="bx bx-award me-1 align-middle"></i> <?= $tier ?>
                             </span>
                         </div>
@@ -63,7 +63,7 @@ $attendanceCount = count($attendanceSummary);
                         </p>
                     </div>
                     <div class="col-lg-4 col-md-12 text-lg-end">
-                        <div class="d-inline-flex align-items-center bg-white bg-opacity-10 border border-white border-opacity-10 rounded-4 p-3 text-start gap-3">
+                        <div class="d-inline-flex align-items-center rounded-4 p-3 text-start gap-3" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15);">
                             <div class="position-relative d-flex align-items-center justify-content-center" style="width: 58px; height: 58px;">
                                 <svg viewBox="0 0 36 36" class="circular-chart" style="width: 58px; height: 58px;">
                                     <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255, 255, 255, 0.15)" stroke-width="3.5" />
@@ -93,7 +93,7 @@ $attendanceCount = count($attendanceSummary);
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0 me-3">
-                            <div class="avatar-sm rounded-3 bg-success bg-opacity-10 d-flex align-items-center justify-content-center text-success">
+                            <div class="avatar-sm rounded-3 d-flex align-items-center justify-content-center" style="background: #e8f5e9; color: #2e7d32;">
                                 <i class="bx bx-calendar-check font-size-24"></i>
                             </div>
                         </div>
@@ -121,7 +121,7 @@ $attendanceCount = count($attendanceSummary);
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0 me-3">
-                            <div class="avatar-sm rounded-3 bg-primary bg-opacity-10 d-flex align-items-center justify-content-center text-primary">
+                            <div class="avatar-sm rounded-3 d-flex align-items-center justify-content-center" style="background: #e3f2fd; color: #1976d2;">
                                 <i class="bx bx-wallet font-size-24"></i>
                             </div>
                         </div>
@@ -149,7 +149,7 @@ $attendanceCount = count($attendanceSummary);
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0 me-3">
-                            <div class="avatar-sm rounded-3 bg-info bg-opacity-10 d-flex align-items-center justify-content-center text-info">
+                            <div class="avatar-sm rounded-3 d-flex align-items-center justify-content-center" style="background: #e0f7fa; color: #00838f;">
                                 <i class="bx bx-group font-size-24"></i>
                             </div>
                         </div>
@@ -177,7 +177,7 @@ $attendanceCount = count($attendanceSummary);
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0 me-3">
-                            <div class="avatar-sm rounded-3 bg-warning bg-opacity-10 d-flex align-items-center justify-content-center text-warning">
+                            <div class="avatar-sm rounded-3 d-flex align-items-center justify-content-center" style="background: #fff3e0; color: #e65100;">
                                 <i class="bx bx-heart font-size-24"></i>
                             </div>
                         </div>
@@ -468,26 +468,26 @@ $attendanceCount = count($attendanceSummary);
     <!-- Right Sidebar Column: Giving Summary, AI Spiritual Pulse, Notifications -->
     <div class="col-xl-4">
         <!-- Giving & Stewardship Card -->
-        <div class="card border-0 shadow-sm rounded-4 mb-4 text-white overflow-hidden" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+        <div class="card border-0 shadow-sm rounded-4 mb-4 text-white overflow-hidden" style="background: linear-gradient(135deg, #0d5c46 0%, #15803d 100%);">
             <div class="card-body p-4 position-relative">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <span class="badge bg-white bg-opacity-20 text-white font-size-11 px-2 py-1 rounded-pill">
+                    <span class="badge font-size-11 px-2.5 py-1 rounded-pill" style="background: rgba(255, 255, 255, 0.2); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.35);">
                         <i class="bx bx-lock-alt me-1"></i> Private & Audited
                     </span>
-                    <i class="bx bx-wallet-alt font-size-24 text-white text-opacity-75"></i>
+                    <i class="bx bx-wallet-alt font-size-24 text-white" style="opacity: 0.9;"></i>
                 </div>
-                <span class="font-size-12 text-white text-opacity-75 text-uppercase d-block mb-1">Total Lifetime Giving</span>
-                <h2 class="text-white fw-bold mb-3">₦<?= number_format($totalGiving, 2) ?></h2>
+                <span class="font-size-11 text-uppercase d-block mb-1 fw-bold tracking-wider" style="color: rgba(255, 255, 255, 0.85);">Total Lifetime Giving</span>
+                <h2 class="text-white fw-bold mb-3 font-size-26">₦<?= number_format($totalGiving, 2) ?></h2>
 
-                <div class="bg-white bg-opacity-15 rounded-3 p-3 mb-3">
+                <div class="rounded-3 p-3 mb-3" style="background: rgba(0, 0, 0, 0.22); border: 1px solid rgba(255, 255, 255, 0.18);">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <span class="font-size-11 text-white text-opacity-75 text-uppercase d-block"><?= date('Y') ?> Giving</span>
+                            <span class="font-size-11 text-uppercase d-block fw-bold" style="color: rgba(255, 255, 255, 0.8);"><?= date('Y') ?> Giving</span>
                             <h5 class="text-white fw-bold mb-0">₦<?= number_format($thisYearGiving, 2) ?></h5>
                         </div>
                         <?php if (!empty($givingSummary['last_transaction'])): ?>
-                            <div class="text-end border-start border-white border-opacity-20 ps-3">
-                                <span class="font-size-11 text-white text-opacity-75 text-uppercase d-block">Last Seed</span>
+                            <div class="text-end border-start ps-3" style="border-color: rgba(255, 255, 255, 0.25) !important;">
+                                <span class="font-size-11 text-uppercase d-block fw-bold" style="color: rgba(255, 255, 255, 0.8);">Last Seed</span>
                                 <h6 class="text-white fw-bold mb-0"><?= date('M d', strtotime($givingSummary['last_transaction']['transaction_date'])) ?></h6>
                             </div>
                         <?php endif; ?>
@@ -495,10 +495,10 @@ $attendanceCount = count($attendanceSummary);
                 </div>
 
                 <div class="d-flex gap-2">
-                    <a href="<?= AssetHelper::url('giving/my-records') ?>" class="btn btn-white bg-white text-success fw-bold flex-grow-1 shadow-sm font-size-13 py-2">
+                    <a href="<?= AssetHelper::url('giving/my-records') ?>" class="btn fw-bold flex-grow-1 shadow-sm font-size-13 py-2" style="background: #ffffff; color: #0d5c46;">
                         View Records &rarr;
                     </a>
-                    <a href="<?= AssetHelper::url('giving/my-pledges') ?>" class="btn btn-outline-light fw-semibold font-size-13 py-2">
+                    <a href="<?= AssetHelper::url('giving/my-pledges') ?>" class="btn fw-semibold font-size-13 py-2 text-white" style="background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.35);">
                         Pledges
                     </a>
                 </div>
