@@ -207,9 +207,10 @@ class EvangelismController extends BaseController {
     }
 
     public function updateMilestone($id) {
+        $isAjax = $this->request->isAjax();
         $token = $this->request->post('_token');
         if (!Security::validateCSRFToken($token)) {
-            if ($this->request->isAjax()) {
+            if ($isAjax) {
                 header('Content-Type: application/json');
                 echo json_encode(['success' => false, 'message' => 'CSRF error']);
                 exit;
@@ -223,21 +224,29 @@ class EvangelismController extends BaseController {
 
         $updated = $this->convertModel->updateMilestone((int)$id, $milestone, $value);
 
-        if ($this->request->isAjax()) {
+        if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => (bool)$updated]);
             exit;
         }
 
         $this->session->setFlash('success', 'Spiritual milestone updated!');
-        $this->redirect('/evangelism/converts/' . (int)$id);
+        $referer = $_SERVER['HTTP_REFERER'] ?? ('/evangelism/converts/' . (int)$id);
+        header('Location: ' . $referer);
+        exit;
     }
 
     public function addFollowupLog($id) {
+        $isAjax = $this->request->isAjax();
         $token = $this->request->post('_token');
         if (!Security::validateCSRFToken($token)) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'CSRF error']);
+                exit;
+            }
             $this->session->setFlash('error', 'Invalid security token.');
-            $this->redirect('/evangelism/converts/' . (int)$id);
+            $this->redirect('/evangelism');
         }
 
         $userId = (int)$this->session->get('user_id');
@@ -249,17 +258,31 @@ class EvangelismController extends BaseController {
             'milestone_updated' => $this->request->post('milestone_updated')
         ];
 
-        if ($this->convertModel->addFollowupLog((int)$id, $userId, $data)) {
+        $logged = $this->convertModel->addFollowupLog((int)$id, $userId, $data);
+        if ($logged) {
             // If milestone was checked in form, update it too
             if (!empty($data['milestone_updated'])) {
                 $this->convertModel->updateMilestone((int)$id, $data['milestone_updated'], 1);
             }
+
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'Touchpoint recorded successfully!']);
+                exit;
+            }
             $this->session->setFlash('success', 'Follow-up touchpoint recorded successfully!');
         } else {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Failed to record touchpoint']);
+                exit;
+            }
             $this->session->setFlash('error', 'Failed to record follow-up log.');
         }
 
-        $this->redirect('/evangelism/converts/' . (int)$id);
+        $referer = $_SERVER['HTTP_REFERER'] ?? ('/evangelism/converts/' . (int)$id);
+        header('Location: ' . $referer);
+        exit;
     }
 
     public function show($id) {

@@ -56,6 +56,12 @@ class Request {
         return $this->method() === 'DELETE';
     }
 
+    public function isAjax() {
+        return (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+            || (isset($_GET['ajax']) && $_GET['ajax'] === '1')
+            || (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false);
+    }
+
     public function get($key = null, $default = null) {
         if ($key === null) {
             return $_GET;
