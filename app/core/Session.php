@@ -95,6 +95,17 @@ class Session {
     }
 
     /**
+     * Check if current user is an admin / superadmin
+     */
+    public function isAdmin() {
+        return $this->get('user_role') === 'admin';
+    }
+
+    public function isSuperAdmin() {
+        return $this->get('user_role') === 'admin';
+    }
+
+    /**
      * Check if current user is a head pastor of any church
      */
     public function isHeadPastor() {
