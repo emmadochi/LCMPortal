@@ -90,6 +90,8 @@ $router->group('/members', function($router) {
 // Evangelism Reporting Routes
 $router->group('/evangelism', function($router) {
     $router->get('', 'EvangelismController@index');
+    $router->get('/leaderboard', 'EvangelismController@leaderboard');
+    $router->get('/leaderboard/export', 'EvangelismController@exportLeaderboard');
     $router->get('/create', 'EvangelismController@create');
     $router->post('', 'EvangelismController@store');
     $router->get('/export', 'EvangelismController@export');

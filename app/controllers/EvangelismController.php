@@ -152,6 +152,70 @@ class EvangelismController extends BaseController {
         $this->redirect('/evangelism');
     }
 
+    public function leaderboard() {
+        $period = $this->request->get('period', 'month');
+        $validPeriods = ['week', 'month', 'quarter', 'year', 'all'];
+        if (!in_array($period, $validPeriods)) {
+            $period = 'month';
+        }
+
+        $churchId = $this->request->get('church_id');
+        if ($this->session->isHeadPastor() && !$this->session->isSuperAdmin()) {
+            $churchId = $this->session->getHeadPastorChurchId();
+        }
+
+        $churchModel = new \App\Models\Church();
+        $churches = $churchModel->findAll(['status' => 'active'], 'name ASC');
+
+        $leaderboard = $this->evangelismReportModel->getLeaderboard($period, $churchId, 50);
+        $stats = $this->evangelismReportModel->getLeaderboardStats($period, $churchId);
+        $harvestTrends = $this->evangelismReportModel->getHarvestTrends($period, $churchId);
+        $unitBreakdown = $this->evangelismReportModel->getUnitBreakdown($period, $churchId);
+        $verificationLogs = $this->evangelismReportModel->getVerificationLogs($period, $churchId, 50);
+
+        $this->render('evangelism/leaderboard', [
+            'title' => 'Soul Winner Leaderboard & Analytics',
+            'pageTitle' => 'Soul Winning Leaderboard',
+            'period' => $period,
+            'churchId' => $churchId,
+            'churches' => $churches,
+            'leaderboard' => $leaderboard,
+            'stats' => $stats,
+            'harvestTrends' => $harvestTrends,
+            'unitBreakdown' => $unitBreakdown,
+            'verificationLogs' => $verificationLogs
+        ]);
+    }
+
+    public function exportLeaderboard() {
+        $period = $this->request->get('period', 'month');
+        $churchId = $this->request->get('church_id');
+        if ($this->session->isHeadPastor() && !$this->session->isSuperAdmin()) {
+            $churchId = $this->session->getHeadPastorChurchId();
+        }
+
+        $leaderboard = $this->evangelismReportModel->getLeaderboard($period, $churchId, 500);
+
+        $headers = ['Rank', 'Member Name', 'Email', 'Church Branch', 'Department', 'Total Souls Won', 'Outreach Reports', 'Latest Outreach'];
+        $rows = [];
+        $rank = 1;
+        foreach ($leaderboard as $row) {
+            $rows[] = [
+                '#' . $rank++,
+                $row['user_name'],
+                $row['user_email'],
+                $row['church_name'] ?? 'General',
+                $row['unit_name'] ?? 'General',
+                (int)$row['total_souls'],
+                (int)$row['report_count'],
+                $row['latest_outreach'] ? date('M d, Y', strtotime($row['latest_outreach'])) : 'N/A'
+            ];
+        }
+
+        $baseName = 'soul_winner_leaderboard_' . $period . '_' . date('Y-m-d_His');
+        \App\Utilities\ExportHelper::exportCSV($rows, $headers, $baseName . '.csv');
+    }
+
     public function export() {
         $userId = (int)$this->session->get('user_id');
         $dateFrom = $this->request->get('date_from');

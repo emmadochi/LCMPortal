@@ -190,6 +190,18 @@ use App\Utilities\AssetHelper;
                         </ul>
                     </li>
 
+                    <li>
+                        <a href="javascript: void(0);" class="has-arrow waves-effect">
+                            <i class="bx bx-heart"></i>
+                            <span key="t-evangelism">Evangelism & Outreach</span>
+                        </a>
+                        <ul class="sub-menu" aria-expanded="false">
+                            <li><a href="<?= AssetHelper::url('evangelism/leaderboard') ?>" key="t-soul-leaderboard"><i class="bx bx-trophy text-warning me-1"></i> Soul Leaderboard</a></li>
+                            <li><a href="<?= AssetHelper::url('evangelism') ?>" key="t-evangelism-reports">Outreach Reports</a></li>
+                            <li><a href="<?= AssetHelper::url('evangelism/create') ?>" key="t-log-soul">Log Soul Won</a></li>
+                        </ul>
+                    </li>
+
                     <?php if ($this->session->get('can_send_notifications', false) || $this->session->hasPermission('send_broadcast_notifications')): ?>
                     <li>
                         <a href="javascript: void(0);" class="has-arrow waves-effect">
