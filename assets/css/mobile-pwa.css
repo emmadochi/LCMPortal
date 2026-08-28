@@ -5,27 +5,39 @@
 /* ── 1. Floating PWA Install Pop-up Banner ── */
 .pwa-install-banner {
   position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%) translateY(120%);
+  bottom: 20px;
+  right: 20px;
+  left: auto;
+  transform: translateY(140%);
   width: calc(100% - 32px);
-  max-width: 540px;
-  background: rgba(15, 23, 42, 0.95);
+  max-width: 420px;
+  background: rgba(15, 23, 42, 0.96);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 20px;
+  border-radius: 16px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(79, 70, 229, 0.2);
   color: #ffffff;
-  padding: 16px 20px;
+  padding: 14px 18px;
   z-index: 10500;
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
   opacity: 0;
   pointer-events: none;
 }
 
+@media (max-width: 576px) {
+  .pwa-install-banner {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%) translateY(140%);
+  }
+  .pwa-install-banner.show {
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 .pwa-install-banner.show {
-  transform: translateX(-50%) translateY(0);
+  transform: translateY(0);
   opacity: 1;
   pointer-events: auto;
 }
