@@ -15,8 +15,17 @@ class SecurityHeadersMiddleware {
         }
         
         // Content Security Policy
-        // Allows self scripts/styles, Google Fonts, and common CDNs (cdnjs, cloudflare)
-        header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'none';");
+        // Allows self scripts/styles, Google Fonts, and required CDNs (jsdelivr, unpkg, cdnjs)
+        $csp = "default-src 'self'; "
+             . "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com; "
+             . "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
+             . "font-src 'self' data: https://fonts.gstatic.com https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
+             . "img-src 'self' data: blob: https:; "
+             . "connect-src 'self' https:; "
+             . "manifest-src 'self'; "
+             . "worker-src 'self' blob:; "
+             . "frame-ancestors 'none';";
+        header("Content-Security-Policy: {$csp}");
 
         return $next();
     }
