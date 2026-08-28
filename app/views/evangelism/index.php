@@ -312,8 +312,23 @@ $holyGhostCount = (int)($careStats['holy_ghost_baptized_count'] ?? 0);
                                             <?php endif; ?>
                                         </td>
                                         <td class="text-end pe-4">
-                                            <a href="<?= AssetHelper::url('evangelism/converts/' . (int)$c['id']) ?>" class="btn btn-sm btn-primary rounded-pill px-3 font-size-12 fw-semibold">
+                                            <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 font-size-12 fw-semibold open-convert-care-btn"
+                                                data-id="<?= (int)$c['id'] ?>"
+                                                data-name="<?= htmlspecialchars($c['full_name']) ?>"
+                                                data-phone="<?= htmlspecialchars($c['phone'] ?? '') ?>"
+                                                data-decision="<?= htmlspecialchars($c['decision_type'] ?? 'salvation') ?>"
+                                                data-prayer="<?= htmlspecialchars($c['prayer_requests'] ?? '') ?>"
+                                                data-contacted="<?= !empty($c['first_contact_done']) ? '1' : '0' ?>"
+                                                data-attended="<?= !empty($c['attended_service']) ? '1' : '0' ?>"
+                                                data-holyghost="<?= !empty($c['baptized_holy_ghost']) ? '1' : '0' ?>"
+                                                data-water="<?= !empty($c['baptized_water']) ? '1' : '0' ?>"
+                                                data-foundation="<?= !empty($c['foundation_class_enrolled']) ? '1' : '0' ?>"
+                                                data-department="<?= htmlspecialchars($c['department_joined'] ?? '') ?>"
+                                                data-profile-url="<?= AssetHelper::url('evangelism/converts/' . (int)$c['id']) ?>">
                                                 <i class="bx bx-heart me-1"></i> Care & Journey
+                                            </button>
+                                            <a href="<?= AssetHelper::url('evangelism/converts/' . (int)$c['id']) ?>" class="btn btn-sm btn-light border rounded-pill px-2 ms-1" title="Open Full Profile Page">
+                                                <i class="bx bx-show"></i>
                                             </a>
                                         </td>
                                     </tr>
@@ -492,6 +507,272 @@ $holyGhostCount = (int)($careStats['holy_ghost_baptized_count'] ?? 0);
     </div>
 </div>
 
+<!-- Modal 3: Instant Convert Care & Journey Modal -->
+<div class="modal fade" id="convertCareModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius: 18px;">
+            <div class="modal-header text-white py-3 border-0" style="background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%); border-radius: 18px 18px 0 0;">
+                <div class="d-flex align-items-center justify-content-between w-100">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar-sm rounded-circle d-flex align-items-center justify-content-center fw-bold" style="background: #fef3c7; color: #b45309;">
+                            <i class="bx bx-user-check font-size-20"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title text-white fw-bold mb-0" id="careModalConvertName">Convert Name</h5>
+                            <small class="text-white-50 font-size-12" id="careModalConvertDecision">Salvation &bull; Discipleship Journey</small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <a href="#" id="careModalWhatsappBtn" target="_blank" class="btn btn-success btn-sm rounded-pill px-3 fw-semibold">
+                            <i class="bx bxl-whatsapp me-1"></i> WhatsApp
+                        </a>
+                        <a href="#" id="careModalCallBtn" class="btn btn-warning btn-sm text-dark rounded-pill px-3 fw-bold">
+                            <i class="bx bx-phone-call me-1"></i> Call
+                        </a>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-body p-4 bg-light">
+                <div class="row g-3">
+                    <!-- Left: 6 Spiritual Milestones -->
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm rounded-3 bg-white h-100 p-3">
+                            <h6 class="fw-bold text-dark mb-3 d-flex align-items-center">
+                                <i class="bx bx-flame text-danger me-2 font-size-18"></i> Spiritual Milestones
+                            </h6>
+                            
+                            <div class="list-group list-group-flush font-size-13">
+                                <!-- 1. Initial Contact -->
+                                <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+                                    <span>📞 1. Initial Contact Done</span>
+                                    <form method="POST" class="milestone-toggle-form">
+                                        <input type="hidden" name="_token" value="<?= Security::generateCSRFToken() ?>">
+                                        <input type="hidden" name="milestone" value="first_contact_done">
+                                        <input type="hidden" name="value" class="milestone-val" value="1">
+                                        <button type="submit" class="btn btn-xs rounded-pill milestone-btn btn-outline-secondary">
+                                            <i class="bx bx-check"></i>
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- 2. Attended Church -->
+                                <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+                                    <span>⛪ 2. Attended Church Service</span>
+                                    <form method="POST" class="milestone-toggle-form">
+                                        <input type="hidden" name="_token" value="<?= Security::generateCSRFToken() ?>">
+                                        <input type="hidden" name="milestone" value="attended_service">
+                                        <input type="hidden" name="value" class="milestone-val" value="1">
+                                        <button type="submit" class="btn btn-xs rounded-pill milestone-btn btn-outline-secondary">
+                                            <i class="bx bx-check"></i>
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- 3. Holy Ghost Baptized -->
+                                <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+                                    <span>🔥 3. Holy Ghost Baptized</span>
+                                    <form method="POST" class="milestone-toggle-form">
+                                        <input type="hidden" name="_token" value="<?= Security::generateCSRFToken() ?>">
+                                        <input type="hidden" name="milestone" value="baptized_holy_ghost">
+                                        <input type="hidden" name="value" class="milestone-val" value="1">
+                                        <button type="submit" class="btn btn-xs rounded-pill milestone-btn btn-outline-secondary">
+                                            <i class="bx bx-check"></i>
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- 4. Water Baptism -->
+                                <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+                                    <span>💧 4. Water Baptism</span>
+                                    <form method="POST" class="milestone-toggle-form">
+                                        <input type="hidden" name="_token" value="<?= Security::generateCSRFToken() ?>">
+                                        <input type="hidden" name="milestone" value="baptized_water">
+                                        <input type="hidden" name="value" class="milestone-val" value="1">
+                                        <button type="submit" class="btn btn-xs rounded-pill milestone-btn btn-outline-secondary">
+                                            <i class="bx bx-check"></i>
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- 5. Foundation Class -->
+                                <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+                                    <span>📖 5. Believers Class Enrolled</span>
+                                    <form method="POST" class="milestone-toggle-form">
+                                        <input type="hidden" name="_token" value="<?= Security::generateCSRFToken() ?>">
+                                        <input type="hidden" name="milestone" value="foundation_class_enrolled">
+                                        <input type="hidden" name="value" class="milestone-val" value="1">
+                                        <button type="submit" class="btn btn-xs rounded-pill milestone-btn btn-outline-secondary">
+                                            <i class="bx bx-check"></i>
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- 6. Department Joined -->
+                                <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+                                    <span>🕊️ 6. Ministry Unit Integrated</span>
+                                    <form method="POST" class="milestone-toggle-form">
+                                        <input type="hidden" name="_token" value="<?= Security::generateCSRFToken() ?>">
+                                        <input type="hidden" name="milestone" value="department_joined">
+                                        <input type="hidden" name="value" class="milestone-val" value="Evangelism">
+                                        <button type="submit" class="btn btn-xs rounded-pill milestone-btn btn-outline-secondary">
+                                            <i class="bx bx-check"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="mt-3 pt-2 border-top">
+                                <small class="text-muted d-block mb-1">Prayer Points / Needs:</small>
+                                <p class="text-dark font-size-12 fst-italic mb-0 p-2 rounded bg-light" id="careModalPrayerPoints">None</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Quick Touchpoint Logger -->
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm rounded-3 bg-white h-100 p-3">
+                            <h6 class="fw-bold text-dark mb-3 d-flex align-items-center">
+                                <i class="bx bx-message-square-add text-primary me-2 font-size-18"></i> Log Follow-up Touchpoint
+                            </h6>
+
+                            <form method="POST" id="careModalFollowupForm">
+                                <input type="hidden" name="_token" value="<?= Security::generateCSRFToken() ?>">
+                                
+                                <div class="mb-2">
+                                    <label class="form-label font-size-12 fw-semibold mb-1">Contact Method</label>
+                                    <select name="contact_method" class="form-select form-select-sm rounded-3">
+                                        <option value="phone_call">📞 Phone Call</option>
+                                        <option value="whatsapp_sms">💬 WhatsApp Message</option>
+                                        <option value="home_visit">🏡 Home Visit</option>
+                                        <option value="church_meeting">⛪ Met at Church</option>
+                                        <option value="prayer_session">🙏 Prayer Session</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-2">
+                                    <label class="form-label font-size-12 fw-semibold mb-1">Outcome</label>
+                                    <select name="outcome" class="form-select form-select-sm rounded-3">
+                                        <option value="reached_receptive">✅ Receptive / Welcomed Prayer</option>
+                                        <option value="attended_service">⛪ Attended Service</option>
+                                        <option value="reached_busy">⏳ Reached but Busy</option>
+                                        <option value="not_answering">📴 Not Answering</option>
+                                        <option value="prayer_answered">🙌 Prayer Answered / Testimony</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-2">
+                                    <label class="form-label font-size-12 fw-semibold mb-1">Conversation Notes</label>
+                                    <textarea name="notes" class="form-control form-control-sm rounded-3" rows="2" placeholder="Discussion summary, scriptures shared..."></textarea>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label font-size-12 fw-semibold mb-1">Next Follow-up Date</label>
+                                    <input type="date" name="next_action_date" class="form-control form-control-sm rounded-3" value="<?= date('Y-m-d', strtotime('+3 days')) ?>">
+                                </div>
+
+                                <div class="d-flex justify-content-end">
+                                    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4 fw-semibold shadow-sm">
+                                        <i class="bx bx-check me-1"></i> Save Touchpoint
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-light py-2 border-top d-flex justify-content-between">
+                <a href="#" id="careModalFullProfileLink" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold">
+                    <i class="bx bx-arrow-to-right me-1"></i> Open Full Discipleship Profile Page
+                </a>
+                <button type="button" class="btn btn-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const careModalEl = document.getElementById('convertCareModal');
+    let careModal = null;
+    if (careModalEl && typeof bootstrap !== 'undefined') {
+        careModal = new bootstrap.Modal(careModalEl);
+    }
+
+    document.querySelectorAll('.open-convert-care-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const id = this.dataset.id;
+            const name = this.dataset.name;
+            const phone = this.dataset.phone;
+            const decision = this.dataset.decision;
+            const prayer = this.dataset.prayer;
+            const contacted = this.dataset.contacted === '1';
+            const attended = this.dataset.attended === '1';
+            const holyghost = this.dataset.holyghost === '1';
+            const water = this.dataset.water === '1';
+            const foundation = this.dataset.foundation === '1';
+            const department = this.dataset.department;
+            const profileUrl = this.dataset.profileUrl;
+
+            // Populate Modal
+            document.getElementById('careModalConvertName').textContent = name;
+            document.getElementById('careModalConvertDecision').textContent = (decision.charAt(0).toUpperCase() + decision.slice(1)) + ' • Discipleship Journey';
+            document.getElementById('careModalPrayerPoints').textContent = prayer || 'No specific prayer request recorded.';
+            document.getElementById('careModalFullProfileLink').href = profileUrl;
+
+            // Action Buttons
+            const waBtn = document.getElementById('careModalWhatsappBtn');
+            const callBtn = document.getElementById('careModalCallBtn');
+            const cleanPhone = phone ? phone.replace(/[^0-9]/g, '') : '';
+
+            if (cleanPhone) {
+                waBtn.style.display = 'inline-flex';
+                waBtn.href = 'https://wa.me/' + cleanPhone;
+                callBtn.style.display = 'inline-flex';
+                callBtn.href = 'tel:' + phone;
+            } else {
+                waBtn.style.display = 'none';
+                callBtn.style.display = 'none';
+            }
+
+            // Set Form Action
+            const followupForm = document.getElementById('careModalFollowupForm');
+            followupForm.action = '<?= AssetHelper::url('evangelism/converts/') ?>' + id + '/followup';
+
+            // Milestone forms action & buttons state
+            const milestoneForms = careModalEl.querySelectorAll('.milestone-toggle-form');
+            const milestonesState = [contacted, attended, holyghost, water, foundation, (department && department.length > 0)];
+
+            milestoneForms.forEach(function(mForm, idx) {
+                mForm.action = '<?= AssetHelper::url('evangelism/converts/') ?>' + id + '/milestone';
+                const isChecked = milestonesState[idx];
+                const mBtn = mForm.querySelector('.milestone-btn');
+                const mVal = mForm.querySelector('.milestone-val');
+
+                if (isChecked) {
+                    mBtn.className = 'btn btn-xs rounded-pill milestone-btn btn-success';
+                    mBtn.innerHTML = '<i class="bx bx-check-double"></i> Done';
+                    mVal.value = '0';
+                } else {
+                    mBtn.className = 'btn btn-xs rounded-pill milestone-btn btn-outline-secondary';
+                    mBtn.innerHTML = '<i class="bx bx-check"></i> Mark';
+                    mVal.value = (idx === 5) ? 'Evangelism' : '1';
+                }
+            });
+
+            if (careModal) {
+                careModal.show();
+            } else {
+                window.location.href = profileUrl;
+            }
+        });
+    });
+});
+</script>
+
 <style>
 .stat-card-hover {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -500,4 +781,9 @@ $holyGhostCount = (int)($careStats['holy_ghost_baptized_count'] ?? 0);
     transform: translateY(-3px);
     box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.08) !important;
 }
+.btn-xs {
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+}
 </style>
+

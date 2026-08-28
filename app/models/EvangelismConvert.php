@@ -103,7 +103,7 @@ class EvangelismConvert {
         try {
             $sql = "SELECT c.*, u.name as soul_winner_name, u.email as soul_winner_email, ch.name as church_name
                     FROM evangelism_converts c
-                    JOIN users u ON u.id = c.soul_winner_id
+                    LEFT JOIN users u ON u.id = c.soul_winner_id
                     LEFT JOIN churches ch ON ch.id = c.church_id
                     WHERE c.id = ? LIMIT 1";
             $stmt = $this->db->prepare($sql);
