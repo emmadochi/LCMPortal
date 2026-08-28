@@ -10,7 +10,9 @@ class EvangelismController extends BaseController {
     public function __construct() {
         parent::__construct();
         $this->evangelismReportModel = new EvangelismReport();
-        $this->authorize('user'); // Ensure user is logged in
+        if (!$this->session->has('user_id')) {
+            $this->redirect('/login');
+        }
     }
 
     public function index() {
