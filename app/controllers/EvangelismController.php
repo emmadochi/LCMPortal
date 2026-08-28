@@ -193,6 +193,35 @@ class EvangelismController extends BaseController {
         $unitBreakdown = $this->evangelismReportModel->getUnitBreakdown($period, $churchId);
         $verificationLogs = $this->evangelismReportModel->getVerificationLogs($period, $churchId, 50);
 
+        $periodLabels = [
+            'week' => 'This Week',
+            'month' => 'This Month',
+            'quarter' => 'This Quarter',
+            'year' => 'This Year (' . date('Y') . ')',
+            'all' => 'All Time'
+        ];
+
+        // Check for AJAX JSON request
+        $isAjax = ($this->request->get('ajax') === '1') || 
+                  (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'period' => $period,
+                'period_label' => $periodLabels[$period] ?? 'This Month',
+                'church_id' => $churchId,
+                'stats' => $stats,
+                'leaderboard' => $leaderboard,
+                'harvestTrends' => $harvestTrends,
+                'unitBreakdown' => $unitBreakdown,
+                'verificationLogs' => $verificationLogs,
+                'exportUrl' => \App\Utilities\AssetHelper::url('evangelism/leaderboard/export?period=' . $period . ($churchId ? '&church_id=' . $churchId : ''))
+            ]);
+            exit;
+        }
+
         $this->render('evangelism/leaderboard', [
             'title' => 'Soul Winner Leaderboard & Analytics',
             'pageTitle' => 'Soul Winning Leaderboard',
