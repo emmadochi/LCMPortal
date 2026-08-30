@@ -5,6 +5,7 @@ use App\Models\EvangelismReport;
 use App\Models\EvangelismConvert;
 use App\Models\Church;
 use App\Models\User;
+use App\Models\Notification;
 use App\Utilities\Security;
 use App\Utilities\AssetHelper;
 
@@ -306,8 +307,25 @@ class EvangelismController extends BaseController {
         }
 
         $mentorId = (int)$this->request->post('assigned_mentor_id');
+        $convert = $this->convertModel->getConvertById((int)$id);
+        $convertName = $convert['full_name'] ?? 'Convert';
+
         if ($this->convertModel->assignMentor((int)$id, $mentorId > 0 ? $mentorId : null)) {
-            $this->session->setFlash('success', 'Soul assigned for follow-up care successfully.');
+            if ($mentorId > 0) {
+                try {
+                    Notification::createNotification(
+                        $mentorId,
+                        'info',
+                        'New Soul Assigned for Follow-Up Care',
+                        "Pastor has assigned convert '{$convertName}' to you for discipleship and follow-up care.",
+                        'evangelism/converts/' . (int)$id
+                    );
+                } catch (\Throwable $e) {
+                    error_log("Notification error in assignMentor: " . $e->getMessage());
+                }
+            }
+
+            $this->session->setFlash('success', "Soul '{$convertName}' assigned for follow-up care successfully.");
         } else {
             $this->session->setFlash('error', 'Failed to assign soul.');
         }
@@ -619,6 +637,18 @@ class EvangelismController extends BaseController {
         }
 
         if ($this->convertModel->addPastoralNote($targetUserId, $pastorId, $churchId, $message, $badgeType)) {
+            try {
+                Notification::createNotification(
+                    $targetUserId,
+                    'success',
+                    'Pastoral Commendation Received! 🌟',
+                    "Pastor posted a commendation for your soul winning: " . (strlen($message) > 80 ? substr($message, 0, 77) . '...' : $message),
+                    'evangelism/leaderboard/member/' . $targetUserId
+                );
+            } catch (\Throwable $e) {
+                error_log("Notification error in addCommendation: " . $e->getMessage());
+            }
+
             $this->session->setFlash('success', 'Pastoral commendation posted to the soul winner!');
         } else {
             $this->session->setFlash('error', 'Failed to post commendation.');
