@@ -175,6 +175,7 @@ class EvangelismController extends BaseController {
             $convertNames = $this->request->post('convert_name');
             $convertPhones = $this->request->post('convert_phone');
             $convertEmails = $this->request->post('convert_email');
+            $convertAddresses = $this->request->post('convert_address');
             $convertDecisions = $this->request->post('convert_decision');
             $convertPrayers = $this->request->post('convert_prayer');
 
@@ -189,6 +190,7 @@ class EvangelismController extends BaseController {
                             'full_name' => $cName,
                             'phone' => $convertPhones[$idx] ?? '',
                             'email' => $convertEmails[$idx] ?? '',
+                            'address' => $convertAddresses[$idx] ?? '',
                             'decision_type' => $convertDecisions[$idx] ?? 'salvation',
                             'prayer_requests' => $convertPrayers[$idx] ?? '',
                             'status' => 'new'

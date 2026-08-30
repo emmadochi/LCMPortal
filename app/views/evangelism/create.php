@@ -358,11 +358,11 @@ $mode = $mode ?? (!empty($myConverts) ? 'followup' : 'new_soul');
                                     <h6 class="fw-bold text-dark mb-0 font-size-13">Convert #1</h6>
                                 </div>
                                 <div class="row g-3">
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <label class="form-label fw-semibold font-size-12 text-dark">Full Name <span class="text-danger">*</span></label>
                                         <input type="text" name="convert_name[]" class="form-control form-control-sm rounded-3" placeholder="e.g. John Doe">
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <label class="form-label fw-semibold font-size-12 text-dark">Phone / WhatsApp</label>
                                         <input type="tel" name="convert_phone[]" class="form-control form-control-sm rounded-3" placeholder="e.g. 08012345678">
                                     </div>
@@ -374,7 +374,11 @@ $mode = $mode ?? (!empty($myConverts) ? 'followup' : 'new_soul');
                                             <option value="healing_miracle">Received Healing</option>
                                         </select>
                                     </div>
-                                    <div class="col-md-8">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold font-size-12 text-dark">House / Residential Address</label>
+                                        <input type="text" name="convert_address[]" class="form-control form-control-sm rounded-3" placeholder="e.g. 14 Market Road, City Centre">
+                                    </div>
+                                    <div class="col-md-6">
                                         <label class="form-label fw-semibold font-size-12 text-dark">Prayer Request / Notes</label>
                                         <input type="text" name="convert_prayer[]" class="form-control form-control-sm rounded-3" placeholder="e.g. Prayer for job, family peace...">
                                     </div>
@@ -484,11 +488,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     </button>
                 </div>
                 <div class="row g-3">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label fw-semibold font-size-12 text-dark">Full Name <span class="text-danger">*</span></label>
                         <input type="text" name="convert_name[]" class="form-control form-control-sm rounded-3" placeholder="e.g. Mary Okon">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label fw-semibold font-size-12 text-dark">Phone / WhatsApp</label>
                         <input type="tel" name="convert_phone[]" class="form-control form-control-sm rounded-3" placeholder="e.g. 08087654321">
                     </div>
@@ -500,7 +504,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             <option value="healing_miracle">Received Healing</option>
                         </select>
                     </div>
-                    <div class="col-md-8">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold font-size-12 text-dark">House / Residential Address</label>
+                        <input type="text" name="convert_address[]" class="form-control form-control-sm rounded-3" placeholder="e.g. 14 Market Road, City Centre">
+                    </div>
+                    <div class="col-md-6">
                         <label class="form-label fw-semibold font-size-12 text-dark">Prayer Request / Notes</label>
                         <input type="text" name="convert_prayer[]" class="form-control form-control-sm rounded-3" placeholder="e.g. Growth in faith, healing...">
                     </div>
