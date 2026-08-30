@@ -679,6 +679,7 @@ $router->group('/evangelism', function($router) {
     $router->post('/converts/{id}/assign', 'EvangelismController@assignMentor');
     $router->post('/converts/{id}/milestone', 'EvangelismController@updateMilestone');
     $router->post('/converts/{id}/followup', 'EvangelismController@addFollowupLog');
+    $router->post('/followup/record', 'EvangelismController@recordFollowup');
 
     // Outreach Journal Reports
     $router->get('', 'EvangelismController@index');
