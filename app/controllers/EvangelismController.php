@@ -58,12 +58,85 @@ class EvangelismController extends BaseController {
 
     public function create() {
         $csrfToken = Security::generateCSRFToken();
+        $userId = (int)$this->session->get('user_id');
+        $myConverts = $this->convertModel->getConvertsBySoulWinner($userId);
+        $selectedConvertId = (int)$this->request->get('convert_id', 0);
+        $mode = $this->request->get('mode', (!empty($myConverts) ? 'followup' : 'new_soul'));
 
         $this->render('evangelism/create', [
-            'title' => 'Log Outreach & Converts',
-            'pageTitle' => 'Log Outreach & Converts',
-            'csrf_token' => $csrfToken
+            'title' => 'Record Follow-Up & Log Souls',
+            'pageTitle' => 'Record Follow-Up & Log Souls',
+            'csrf_token' => $csrfToken,
+            'myConverts' => $myConverts,
+            'selectedConvertId' => $selectedConvertId,
+            'mode' => $mode
         ]);
+    }
+
+    /**
+     * Record a follow-up interaction or schedule next follow-up on an assigned/won soul
+     */
+    public function recordFollowup() {
+        $token = $this->request->post('_token');
+        if (!Security::validateCSRFToken($token)) {
+            $this->session->setFlash('error', 'Invalid security token.');
+            $this->redirect('/evangelism/create');
+        }
+
+        $convertId = (int)$this->request->post('convert_id');
+        if ($convertId <= 0) {
+            $this->session->setFlash('error', 'Please select a soul / convert to follow up.');
+            $this->redirect('/evangelism/create');
+        }
+
+        $convert = $this->convertModel->getConvertById($convertId);
+        if (!$convert) {
+            $this->session->setFlash('error', 'Soul / convert record not found.');
+            $this->redirect('/evangelism/create');
+        }
+
+        $userId = (int)$this->session->get('user_id');
+        $isAdminOrPastor = $this->session->isAdmin() || $this->session->isHeadPastor();
+        $isSoulWinner = (int)($convert['soul_winner_id'] ?? 0) === $userId;
+        $isMentor = (int)($convert['assigned_mentor_id'] ?? 0) === $userId;
+
+        if (!$isSoulWinner && !$isMentor && !$isAdminOrPastor) {
+            $this->session->setFlash('error', 'Access denied to this convert record.');
+            $this->redirect('/follow-ups');
+        }
+
+        $data = [
+            'contact_method' => $this->request->post('contact_method', 'phone_call'),
+            'outcome' => $this->request->post('outcome', 'reached_receptive'),
+            'notes' => $this->request->post('notes', ''),
+            'next_action_date' => $this->request->post('next_action_date') ?: null,
+            'milestone_updated' => $this->request->post('milestone_updated') ?: null
+        ];
+
+        $logged = $this->convertModel->addFollowupLog($convertId, $userId, $data);
+        if ($logged) {
+            // Check any milestone checkboxes submitted
+            $milestones = $this->request->post('milestones', []);
+            if (is_array($milestones)) {
+                foreach ($milestones as $mKey => $mVal) {
+                    if ($mVal == 1) {
+                        $this->convertModel->updateMilestone($convertId, $mKey, 1);
+                    }
+                }
+            }
+            if (!empty($data['milestone_updated'])) {
+                $this->convertModel->updateMilestone($convertId, $data['milestone_updated'], 1);
+            }
+
+            // Always update first_contact_done on follow-up
+            $this->convertModel->updateMilestone($convertId, 'first_contact_done', 1);
+
+            $this->session->setFlash('success', "Follow-up touchpoint recorded successfully for {$convert['full_name']}!");
+            $this->redirect('/follow-ups');
+        } else {
+            $this->session->setFlash('error', 'Failed to record follow-up interaction.');
+            $this->redirect('/evangelism/create?convert_id=' . $convertId);
+        }
     }
 
     public function store() {
