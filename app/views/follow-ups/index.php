@@ -628,10 +628,20 @@ function initFollowUpsDataTable() {
     var table = document.getElementById('follow-ups-table');
     if (!table) return;
     try {
+        if (typeof $ !== 'undefined' && $.fn && $.fn.dataTable) {
+            $.fn.dataTable.ext.errMode = 'none';
+        }
         if (typeof $ !== 'undefined' && $.fn.DataTable && $.fn.DataTable.isDataTable('#follow-ups-table')) {
             $('#follow-ups-table').DataTable().destroy();
         }
     } catch (e) {}
+
+    // Check if table contains data rows (not just a single empty/colspan placeholder row)
+    var tbody = table.querySelector('tbody');
+    if (!tbody || tbody.querySelector('td[colspan]') || tbody.querySelectorAll('tr').length === 0) {
+        return; // Skip DataTables initialization on empty state
+    }
+
     try {
         if (typeof DataTable !== 'undefined') {
             new DataTable('#follow-ups-table', {
