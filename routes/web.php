@@ -640,6 +640,8 @@ $router->group('/notifications', function($router) {
     });
     $router->get('/show', 'NotificationController@show');
     $router->get('/api', 'NotificationController@apiList');
+    $router->post('/read/{id}', 'NotificationController@markAsRead');
+    $router->post('/read-all', 'NotificationController@markAllAsRead');
     $router->post('/send', 'NotificationController@send');
 }, [AuthMiddleware::class]);
 

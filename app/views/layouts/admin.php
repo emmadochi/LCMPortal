@@ -108,7 +108,45 @@ use App\Utilities\AssetHelper;
                 </button>
             </div>
 
-            <div class="d-flex">
+            <div class="d-flex align-items-center">
+                <!-- Notification Bell Dropdown -->
+                <div class="dropdown d-inline-block me-2">
+                    <button type="button" class="btn header-item noti-icon position-relative waves-effect" id="page-header-notifications-dropdown"
+                        data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="bx bx-bell font-size-22"></i>
+                        <span class="badge bg-danger rounded-pill position-absolute" id="topbarNotificationBadge" style="top: 14px; right: 6px; font-size: 10px; padding: 3px 6px; display: none;">0</span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0 shadow-lg border-0 rounded-4 overflow-hidden"
+                        aria-labelledby="page-header-notifications-dropdown">
+                        <div class="p-3 bg-light border-bottom">
+                            <div class="row align-items-center">
+                                <div class="col">
+                                    <h6 class="m-0 fw-bold text-dark font-size-14">
+                                        <i class="bx bx-bell text-primary me-1"></i> Notifications
+                                    </h6>
+                                </div>
+                                <div class="col-auto">
+                                    <button type="button" class="btn btn-link btn-sm p-0 text-muted font-size-12" id="markAllNotificationsReadBtn" onclick="markAllNotificationsRead()">
+                                        Mark all read
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div data-simplebar style="max-height: 280px;" id="topbarNotificationsList">
+                            <div class="p-4 text-center text-muted">
+                                <i class="bx bx-loader-alt bx-spin font-size-22 text-primary mb-1"></i>
+                                <p class="mb-0 font-size-12">Loading notifications...</p>
+                            </div>
+                        </div>
+                        <div class="p-2 border-top text-center bg-light">
+                            <a class="btn btn-sm btn-link font-size-13 text-primary fw-semibold" href="<?= AssetHelper::url('notifications/show') ?>">
+                                View All Notifications <i class="bx bx-arrow-right align-middle ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Profile Dropdown -->
                 <div class="dropdown d-inline-block">
                     <button type="button" class="btn header-item waves-effect" id="page-header-user-dropdown"
                         data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -127,6 +165,10 @@ use App\Utilities\AssetHelper;
                         <a class="dropdown-item" href="<?= AssetHelper::url('profile') ?>">
                             <i class="bx bx-user font-size-16 align-middle me-1"></i> 
                             <span key="t-profile">Profile</span>
+                        </a>
+                        <a class="dropdown-item" href="<?= AssetHelper::url('notifications/show') ?>">
+                            <i class="bx bx-bell font-size-16 align-middle me-1"></i> 
+                            <span>Notifications</span>
                         </a>
                         <div class="dropdown-divider"></div>
                         <a class="dropdown-item text-danger" href="<?= AssetHelper::url('logout') ?>">
@@ -515,7 +557,128 @@ document.addEventListener('DOMContentLoaded', function() {
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
+
+    // Topbar live notifications
+    loadTopbarNotifications();
+    setInterval(loadTopbarNotifications, 30000);
 });
+
+function loadTopbarNotifications() {
+    fetch('<?= AssetHelper::url('notifications/api') ?>')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                renderTopbarNotifications(data.notifications || [], data.unread_count || 0);
+            }
+        })
+        .catch(function(err) {
+            console.error('Error fetching notifications:', err);
+        });
+}
+
+function renderTopbarNotifications(notifications, unreadCount) {
+    var badge = document.getElementById('topbarNotificationBadge');
+    var list = document.getElementById('topbarNotificationsList');
+    if (!badge || !list) return;
+
+    if (unreadCount > 0) {
+        badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+        badge.style.display = 'inline-block';
+    } else {
+        badge.style.display = 'none';
+    }
+
+    if (!notifications || notifications.length === 0) {
+        list.innerHTML = '<div class="p-4 text-center text-muted"><i class="bx bx-bell-off font-size-24 mb-1"></i><p class="mb-0 font-size-12">No notifications</p></div>';
+        return;
+    }
+
+    var html = '';
+    notifications.forEach(function(notif) {
+        var isUnread = notif.is_read == 0;
+        var iconClass = 'bx-bell text-primary';
+        var bgClass = 'bg-primary-subtle';
+
+        if (notif.type === 'success' || (notif.title && notif.title.includes('Commendation'))) {
+            iconClass = 'bx-trophy text-warning';
+            bgClass = 'bg-warning-subtle';
+        } else if (notif.type === 'info' || (notif.title && notif.title.includes('Soul'))) {
+            iconClass = 'bx-heart text-danger';
+            bgClass = 'bg-danger-subtle';
+        }
+
+        var link = notif.link ? ('<?= AssetHelper::url('') ?>' + notif.link.replace(/^\//, '')) : '<?= AssetHelper::url('notifications/show') ?>';
+        var timeAgo = getNotificationTimeAgo(notif.created_at);
+
+        html += `
+            <a href="javascript:void(0);" onclick="markNotificationItemRead(${notif.id}, '${link}')" 
+               class="text-reset d-block p-3 border-bottom transition-all ${isUnread ? 'bg-light-subtle' : ''}" 
+               style="text-decoration: none; ${isUnread ? 'background: #f8fafc;' : ''}">
+                <div class="d-flex align-items-start">
+                    <div class="avatar-xs rounded-circle ${bgClass} d-flex align-items-center justify-content-center me-2.5 flex-shrink-0 mt-0.5 font-size-14">
+                        <i class="bx ${iconClass}"></i>
+                    </div>
+                    <div class="flex-grow-1 overflow-hidden">
+                        <div class="d-flex justify-content-between align-items-baseline mb-0.5">
+                            <h6 class="mb-0 font-size-13 text-dark text-truncate ${isUnread ? 'fw-bold' : 'fw-semibold'}">${escapeNotifHtml(notif.title || 'Notification')}</h6>
+                            ${isUnread ? '<span class="badge bg-primary rounded-circle p-1 ms-1" style="width: 6px; height: 6px;"></span>' : ''}
+                        </div>
+                        <p class="mb-1 text-muted font-size-12 text-truncate-2" style="line-height: 1.4;">${escapeNotifHtml(notif.message || '')}</p>
+                        <small class="text-muted font-size-10"><i class="bx bx-time-five me-1"></i>${timeAgo}</small>
+                    </div>
+                </div>
+            </a>
+        `;
+    });
+
+    list.innerHTML = html;
+}
+
+function markNotificationItemRead(notifId, targetUrl) {
+    var csrfToken = document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '';
+    fetch('<?= AssetHelper::url('notifications/read') ?>/' + notifId, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: '_token=' + encodeURIComponent(csrfToken)
+    }).finally(function() {
+        if (targetUrl && targetUrl !== 'javascript:void(0);') {
+            window.location.href = targetUrl;
+        } else {
+            loadTopbarNotifications();
+        }
+    });
+}
+
+function markAllNotificationsRead() {
+    var csrfToken = document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '';
+    fetch('<?= AssetHelper::url('notifications/read-all') ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: '_token=' + encodeURIComponent(csrfToken)
+    }).then(function() {
+        loadTopbarNotifications();
+    });
+}
+
+function getNotificationTimeAgo(dateString) {
+    if (!dateString) return 'Just now';
+    var date = new Date(dateString.replace(/-/g, '/'));
+    var seconds = Math.floor((new Date() - date) / 1000);
+    if (seconds < 60) return 'Just now';
+    var minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return minutes + 'm ago';
+    var hours = Math.floor(minutes / 60);
+    if (hours < 24) return hours + 'h ago';
+    var days = Math.floor(hours / 24);
+    if (days < 7) return days + 'd ago';
+    return date.toLocaleDateString();
+}
+
+function escapeNotifHtml(text) {
+    var d = document.createElement('div');
+    d.textContent = text || '';
+    return d.innerHTML;
+}
 </script>
 
 <?= $pageJs ?? '' ?>
