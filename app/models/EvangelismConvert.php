@@ -78,8 +78,8 @@ class EvangelismConvert {
     public function getConvertsBySoulWinner($userId, $limit = 100) {
         try {
             $sql = "SELECT c.*, 
-                           u_sw.name as soul_winner_name,
-                           u_m.name as assigned_mentor_name,
+                           CONCAT(COALESCE(u_sw.first_name, ''), ' ', COALESCE(u_sw.last_name, '')) as soul_winner_name,
+                           CONCAT(COALESCE(u_m.first_name, ''), ' ', COALESCE(u_m.last_name, '')) as assigned_mentor_name,
                            (SELECT COUNT(*) FROM evangelism_followup_logs f WHERE f.convert_id = c.id) as followup_count,
                            (SELECT MAX(created_at) FROM evangelism_followup_logs f WHERE f.convert_id = c.id) as last_contact_at
                     FROM evangelism_converts c
@@ -106,8 +106,8 @@ class EvangelismConvert {
     public function getConvertById($id) {
         try {
             $sql = "SELECT c.*, 
-                           u.name as soul_winner_name, u.email as soul_winner_email,
-                           um.name as assigned_mentor_name, um.email as assigned_mentor_email,
+                           CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) as soul_winner_name, u.email as soul_winner_email,
+                           CONCAT(COALESCE(um.first_name, ''), ' ', COALESCE(um.last_name, '')) as assigned_mentor_name, um.email as assigned_mentor_email,
                            ch.name as church_name
                     FROM evangelism_converts c
                     LEFT JOIN users u ON u.id = c.soul_winner_id
@@ -249,7 +249,7 @@ class EvangelismConvert {
 
     public function getFollowupLogs($convertId) {
         try {
-            $sql = "SELECT f.*, u.name as logged_by_name
+            $sql = "SELECT f.*, CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) as logged_by_name
                     FROM evangelism_followup_logs f
                     JOIN users u ON u.id = f.user_id
                     WHERE f.convert_id = ?
@@ -340,7 +340,7 @@ class EvangelismConvert {
 
     public function getPastoralNotes($userId) {
         try {
-            $sql = "SELECT p.*, u.name as pastor_name, u.email as pastor_email, ch.name as church_name
+            $sql = "SELECT p.*, CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) as pastor_name, u.email as pastor_email, ch.name as church_name
                     FROM evangelism_pastoral_notes p
                     JOIN users u ON u.id = p.pastor_id
                     LEFT JOIN churches ch ON ch.id = p.church_id
