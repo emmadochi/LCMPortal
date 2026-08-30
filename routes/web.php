@@ -676,6 +676,7 @@ $router->group('/evangelism', function($router) {
     // Convert Follow-Up & Care Engine
     $router->post('/converts/store', 'EvangelismController@convertStore');
     $router->get('/converts/{id}', 'EvangelismController@convertShow');
+    $router->post('/converts/{id}/assign', 'EvangelismController@assignMentor');
     $router->post('/converts/{id}/milestone', 'EvangelismController@updateMilestone');
     $router->post('/converts/{id}/followup', 'EvangelismController@addFollowupLog');
 

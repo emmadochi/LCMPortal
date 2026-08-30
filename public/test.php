@@ -13,7 +13,7 @@ function checkStep($title, $callback) {
         echo "<span style='color:green;font-weight:bold;'>[PASS]</span> " . htmlspecialchars((string)$result) . "</p>";
     } catch (\Throwable $e) {
         echo "<span style='color:red;font-weight:bold;'>[FAIL]</span> " . htmlspecialchars($e->getMessage()) . "</p>";
-        echo "<pre style='background:#fee;padding:8px;border:1px solid #fcc;'>" . htmlspecialchars($e->getTraceAsString()) . "</pre>";
+        echo "<pre style='background:#fee;padding:8px;border:1px solid #fcc;'>" . htmlspecialchars($e->getFile() . " on line " . $e->getLine()) . "\n" . htmlspecialchars($e->getTraceAsString()) . "</pre>";
     }
 }
 
@@ -106,17 +106,21 @@ checkStep("Composer Autoloader", function() {
 
 // 5. Test Session
 checkStep("Session Initialization", function() {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
-    $_SESSION['__diagnostic_test'] = time();
-    return "Session active. ID: " . session_id();
+    $session = \App\Core\Session::getInstance();
+    $session->set('__diagnostic_test', time());
+    return "Session active. Token: " . \App\Utilities\Security::generateCSRFToken();
 });
 
-// 6. Test App Boot
-checkStep("Application Initialization", function() {
-    $app = new \App\Core\App();
-    return "App instantiated successfully with Router";
+// 6. Test App Boot & AuthController
+checkStep("AuthController & View Rendering", function() {
+    $controller = new \App\Controllers\AuthController();
+    ob_start();
+    $controller->showLogin();
+    $output = ob_get_clean();
+    if (strlen($output) < 100) {
+        throw new \Exception("Rendered login output is too short (" . strlen($output) . " bytes)");
+    }
+    return "Login view rendered successfully (" . strlen($output) . " bytes generated)";
 });
 
 echo "<hr><p style='color:blue;'><strong>If all steps passed above, your backend is 100% operational!</strong></p>";

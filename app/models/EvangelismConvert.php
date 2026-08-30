@@ -78,10 +78,14 @@ class EvangelismConvert {
     public function getConvertsBySoulWinner($userId, $limit = 100) {
         try {
             $sql = "SELECT c.*, 
+                           u_sw.name as soul_winner_name,
+                           u_m.name as assigned_mentor_name,
                            (SELECT COUNT(*) FROM evangelism_followup_logs f WHERE f.convert_id = c.id) as followup_count,
                            (SELECT MAX(created_at) FROM evangelism_followup_logs f WHERE f.convert_id = c.id) as last_contact_at
                     FROM evangelism_converts c
-                    WHERE c.soul_winner_id = ?
+                    LEFT JOIN users u_sw ON u_sw.id = c.soul_winner_id
+                    LEFT JOIN users u_m ON u_m.id = c.assigned_mentor_id
+                    WHERE c.soul_winner_id = ? OR c.assigned_mentor_id = ?
                     ORDER BY c.created_at DESC
                     LIMIT ?";
             $stmt = $this->db->prepare($sql);
@@ -89,7 +93,7 @@ class EvangelismConvert {
                 error_log("EvangelismConvert getConvertsBySoulWinner prepare failed: " . $this->db->error);
                 return [];
             }
-            $stmt->bind_param("ii", $userId, $limit);
+            $stmt->bind_param("iii", $userId, $userId, $limit);
             $stmt->execute();
             $result = $stmt->get_result();
             return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
@@ -101,9 +105,13 @@ class EvangelismConvert {
 
     public function getConvertById($id) {
         try {
-            $sql = "SELECT c.*, u.name as soul_winner_name, u.email as soul_winner_email, ch.name as church_name
+            $sql = "SELECT c.*, 
+                           u.name as soul_winner_name, u.email as soul_winner_email,
+                           um.name as assigned_mentor_name, um.email as assigned_mentor_email,
+                           ch.name as church_name
                     FROM evangelism_converts c
                     LEFT JOIN users u ON u.id = c.soul_winner_id
+                    LEFT JOIN users um ON um.id = c.assigned_mentor_id
                     LEFT JOIN churches ch ON ch.id = c.church_id
                     WHERE c.id = ? LIMIT 1";
             $stmt = $this->db->prepare($sql);
@@ -118,6 +126,19 @@ class EvangelismConvert {
         } catch (\Exception $e) {
             error_log("EvangelismConvert: Error finding convert: " . $e->getMessage());
             return null;
+        }
+    }
+
+    public function assignMentor($convertId, $mentorId) {
+        try {
+            $sql = "UPDATE evangelism_converts SET assigned_mentor_id = ? WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+            if (!$stmt) return false;
+            $stmt->bind_param("ii", $mentorId, $convertId);
+            return $stmt->execute();
+        } catch (\Exception $e) {
+            error_log("EvangelismConvert: Error assigning mentor: " . $e->getMessage());
+            return false;
         }
     }
 
@@ -259,7 +280,7 @@ class EvangelismConvert {
                         COALESCE(SUM(foundation_class_enrolled), 0) as foundation_enrolled_count,
                         COALESCE(SUM(CASE WHEN department_joined IS NOT NULL AND department_joined != '' THEN 1 ELSE 0 END), 0) as integrated_department_count
                     FROM evangelism_converts
-                    WHERE soul_winner_id = ?";
+                    WHERE soul_winner_id = ? OR assigned_mentor_id = ?";
             $stmt = $this->db->prepare($sql);
             if (!$stmt) {
                 error_log("EvangelismConvert getSoulWinnerCareStats prepare failed: " . $this->db->error);
@@ -273,7 +294,7 @@ class EvangelismConvert {
                     'integrated_department_count' => 0
                 ];
             }
-            $stmt->bind_param("i", $userId);
+            $stmt->bind_param("ii", $userId, $userId);
             $stmt->execute();
             $result = $stmt->get_result();
             $res = $result ? $result->fetch_assoc() : [];

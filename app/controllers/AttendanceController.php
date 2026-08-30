@@ -21,8 +21,12 @@ class AttendanceController extends BaseController {
         $this->unitModel = new Unit();
         $this->churchModel = new Church();
         $this->userModel = new User();
-        
-        // Check permission
+    }
+
+    /**
+     * Ensure user has management permission for administrative attendance tasks
+     */
+    private function checkManagePermission() {
         if (!$this->session->hasPermission('manage_attendance') && !$this->session->hasPermission('manage_unit_attendance')) {
             $this->authorize('manage_attendance'); // This will trigger the redirection
         }
@@ -33,6 +37,7 @@ class AttendanceController extends BaseController {
      * Optionally scoped to a church for super admin.
      */
     public function index() {
+        $this->checkManagePermission();
         $churchId = (int) $this->request->get('church_id', 0);
         $churchFilter = null;
         $unitIds = [];
@@ -72,6 +77,7 @@ class AttendanceController extends BaseController {
      * Query: period=weekly|monthly|yearly, church_id= (optional, for admin church filter).
      */
     public function chartData() {
+        $this->checkManagePermission();
         $period = strtolower($this->request->get('period', 'monthly'));
         if (!in_array($period, ['weekly', 'monthly', 'yearly'], true)) {
             $period = 'monthly';
@@ -96,6 +102,7 @@ class AttendanceController extends BaseController {
      * When church_id set and unit_id empty/0 → church-wide service.
      */
     public function showService() {
+        $this->checkManagePermission();
         $unitId = (int) $this->request->get('unit_id', 0);
         $churchId = (int) $this->request->get('church_id', 0);
         $eventDate = $this->request->get('event_date', '');
@@ -155,6 +162,7 @@ class AttendanceController extends BaseController {
      * Show create form
      */
     public function create() {
+        $this->checkManagePermission();
         $csrfToken = Security::generateCSRFToken();
         $units = $this->unitModel->getActiveUnits();
         $eventTypes = Attendance::getEventTypes();
@@ -176,6 +184,7 @@ class AttendanceController extends BaseController {
      * Store new attendance record
      */
     public function store() {
+        $this->checkManagePermission();
         $token = $this->request->post('_token');
         if (!$token || !Security::validateCSRFToken($token)) {
             $this->session->setFlash('error', 'Invalid security token.');
@@ -244,6 +253,7 @@ class AttendanceController extends BaseController {
      * When a church is selected, the unit dropdown includes "All church (main service)" to mark entire church.
      */
     public function mark() {
+        $this->checkManagePermission();
         $churchId = (int) $this->request->get('church_id', 0);
         $unitId = isset($_GET['unit_id']) ? (int)$_GET['unit_id'] : -1;
         $eventDate = $this->request->get('event_date', date('Y-m-d'));
@@ -364,6 +374,7 @@ class AttendanceController extends BaseController {
      * Handles both unit-specific and church-wide (unit_id=0, church_id set).
      */
     public function markStore() {
+        $this->checkManagePermission();
         $token = $this->request->post('_token');
         if (!$token || !Security::validateCSRFToken($token)) {
             $this->session->setFlash('error', 'Invalid security token.');
@@ -471,6 +482,7 @@ class AttendanceController extends BaseController {
      * Show single attendance record
      */
     public function show($id) {
+        $this->checkManagePermission();
         $attendance = $this->attendanceModel->find($id);
         
         if (!$attendance) {
@@ -490,6 +502,7 @@ class AttendanceController extends BaseController {
      * Supports: csv, excel, json, pdf
      */
     public function export() {
+        $this->checkManagePermission();
         $churchId = (int) $this->request->get('church_id', 0);
         $churchFilter = null;
         $unitIds = [];

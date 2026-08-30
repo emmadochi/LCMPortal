@@ -158,9 +158,14 @@ use App\Utilities\AssetHelper;
 
 
                     <!-- Operations & Engagement -->
+                    <?php 
+                    $canManageAttendance = $this->session->hasPermission('manage_attendance') || $this->session->hasPermission('manage_unit_attendance') || $this->session->isHeadPastor() || $this->session->get('user_role') === 'admin' || $this->session->isDirector();
+                    $canManageFollowUps = $this->session->get('user_role') === 'admin' || $this->session->isHeadPastor() || $this->session->hasPermission('manage_users') || $this->session->isDirector();
+                    ?>
                     <?php if ($this->session->hasPermission('view_dashboard') || $this->session->isHeadPastor()): ?>
                     <li class="menu-title" key="t-operations">Operations</li>
                     
+                    <?php if ($canManageAttendance): ?>
                     <li>
                         <a href="javascript: void(0);" class="has-arrow waves-effect">
                             <i class="bx bx-calendar-check"></i>
@@ -178,6 +183,7 @@ use App\Utilities\AssetHelper;
                             <?php endif; ?>
                         </ul>
                     </li>
+                    <?php endif; ?>
 
                     <li>
                         <a href="javascript: void(0);" class="has-arrow waves-effect">
@@ -185,8 +191,13 @@ use App\Utilities\AssetHelper;
                             <span key="t-follow-ups">Follow-ups & Care</span>
                         </a>
                         <ul class="sub-menu" aria-expanded="false">
-                            <li><a href="<?= AssetHelper::url('follow-ups') ?>" key="t-follow-up-list">Pending Follow-ups</a></li>
-                            <li><a href="<?= AssetHelper::url('follow-ups/create') ?>" key="t-add-follow-up">Create New</a></li>
+                            <?php if ($this->session->get('user_role') === 'admin' || $this->session->isHeadPastor()): ?>
+                            <li><a href="<?= AssetHelper::url('follow-ups') ?>" key="t-follow-up-list">All Follow-ups & Care</a></li>
+                            <li><a href="<?= AssetHelper::url('follow-ups/create') ?>" key="t-add-follow-up">Create New Follow-up</a></li>
+                            <?php else: ?>
+                            <li><a href="<?= AssetHelper::url('follow-ups') ?>" key="t-my-follow-ups">My Follow-ups (Souls & Care)</a></li>
+                            <li><a href="<?= AssetHelper::url('evangelism/create') ?>" key="t-log-new-soul">Log Soul Won</a></li>
+                            <?php endif; ?>
                         </ul>
                     </li>
 

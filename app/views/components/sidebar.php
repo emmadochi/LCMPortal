@@ -280,6 +280,10 @@ function isActive($uri, $currentUri) {
                     </ul>
                 </li>
 
+                <?php 
+                $canManageAttendance = $session->hasPermission('manage_attendance') || $session->hasPermission('manage_unit_attendance') || $session->isHeadPastor() || $session->get('user_role') === 'admin' || $session->isDirector();
+                ?>
+                <?php if ($canManageAttendance): ?>
                 <li>
                     <a href="javascript: void(0);" class="has-arrow <?= isActive('/attendance', $currentUri) ?>">
                         <i data-feather="calendar"></i>
@@ -303,6 +307,7 @@ function isActive($uri, $currentUri) {
                         </li>
                     </ul>
                 </li>
+                <?php endif; ?>
 
 
 

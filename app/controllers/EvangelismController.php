@@ -189,21 +189,55 @@ class EvangelismController extends BaseController {
             $this->redirect('/evangelism');
         }
 
-        // Only allow soul winner or pastors/admins
+        // Allow soul winner, assigned mentor, or pastors/admins
         $isAdminOrPastor = $this->session->isAdmin() || $this->session->isHeadPastor();
-        if ((int)$convert['soul_winner_id'] !== $userId && !$isAdminOrPastor) {
+        $isSoulWinner = (int)($convert['soul_winner_id'] ?? 0) === $userId;
+        $isMentor = (int)($convert['assigned_mentor_id'] ?? 0) === $userId;
+
+        if (!$isSoulWinner && !$isMentor && !$isAdminOrPastor) {
             $this->session->setFlash('error', 'Access denied.');
             $this->redirect('/evangelism');
         }
 
         $followupLogs = $this->convertModel->getFollowupLogs((int)$id);
 
+        $churchMembers = [];
+        if ($isAdminOrPastor) {
+            $userModel = new User();
+            $churchMembers = $userModel->getActiveMembers();
+        }
+
         $this->render('evangelism/convert_show', [
             'title' => 'Convert Care: ' . $convert['full_name'],
             'pageTitle' => 'Convert Care Profile',
             'convert' => $convert,
-            'followupLogs' => $followupLogs
+            'followupLogs' => $followupLogs,
+            'churchMembers' => $churchMembers,
+            'isAdminOrPastor' => $isAdminOrPastor
         ]);
+    }
+
+    public function assignMentor($id) {
+        $token = $this->request->post('_token');
+        if (!Security::validateCSRFToken($token)) {
+            $this->session->setFlash('error', 'Invalid security token.');
+            $this->redirect('/evangelism/converts/' . $id);
+        }
+
+        $isAdminOrPastor = $this->session->isAdmin() || $this->session->isHeadPastor();
+        if (!$isAdminOrPastor) {
+            $this->session->setFlash('error', 'Only pastors and administrators can assign souls for follow-up.');
+            $this->redirect('/evangelism/converts/' . $id);
+        }
+
+        $mentorId = (int)$this->request->post('assigned_mentor_id');
+        if ($this->convertModel->assignMentor((int)$id, $mentorId > 0 ? $mentorId : null)) {
+            $this->session->setFlash('success', 'Soul assigned for follow-up care successfully.');
+        } else {
+            $this->session->setFlash('error', 'Failed to assign soul.');
+        }
+
+        $this->redirect('/evangelism/converts/' . $id);
     }
 
     public function updateMilestone($id) {

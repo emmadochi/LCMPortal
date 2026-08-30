@@ -3,6 +3,7 @@ namespace App\Controllers;
 
 use App\Models\Unit;
 use App\Models\User;
+use App\Models\Notification;
 use App\Models\ActivityLog;
 use App\Utilities\Security;
 use App\Utilities\ExportHelper;

@@ -209,6 +209,50 @@ $milestonePercent = round(($milestonesCompleted / $milestonesTotal) * 100);
             </div>
         </div>
 
+        <!-- Discipleship & Assigned Carer Card -->
+        <div class="card border-0 shadow-sm rounded-4 bg-white mb-4">
+            <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0 fw-bold text-dark d-flex align-items-center">
+                    <i class="bx bx-user-pin text-primary me-2 font-size-18"></i> Follow-Up Carer / Mentor
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="avatar-sm rounded-circle bg-soft-primary text-primary d-flex align-items-center justify-content-center me-3 font-size-18 fw-bold">
+                        <?= !empty($convert['assigned_mentor_name']) ? strtoupper(substr($convert['assigned_mentor_name'], 0, 1)) : strtoupper(substr($convert['soul_winner_name'] ?? 'U', 0, 1)) ?>
+                    </div>
+                    <div>
+                        <h6 class="mb-0 fw-bold text-dark">
+                            <?= htmlspecialchars($convert['assigned_mentor_name'] ?? ($convert['soul_winner_name'] ?? 'Soul Winner')) ?>
+                        </h6>
+                        <small class="text-muted">
+                            <?= !empty($convert['assigned_mentor_name']) ? 'Assigned Discipleship Mentor' : 'Original Soul Winner' ?>
+                        </small>
+                    </div>
+                </div>
+
+                <?php if (!empty($isAdminOrPastor)): ?>
+                    <form method="POST" action="<?= AssetHelper::url('evangelism/converts/' . (int)$convert['id'] . '/assign') ?>" class="mt-3 pt-3 border-top">
+                        <input type="hidden" name="_token" value="<?= Security::generateCSRFToken() ?>">
+                        <label class="form-label font-size-12 fw-semibold text-muted mb-1">Reassign Follow-Up To Church Member:</label>
+                        <div class="input-group">
+                            <select name="assigned_mentor_id" class="form-select form-select-sm">
+                                <option value="">-- Revert to Soul Winner --</option>
+                                <?php foreach ($churchMembers as $m): ?>
+                                    <option value="<?= $m['id'] ?>" <?= ((int)($convert['assigned_mentor_id'] ?? 0) === (int)$m['id']) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($m['first_name'] . ' ' . $m['last_name'] . ' (' . ($m['email'] ?? '') . ')') ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                <i class="bx bx-check"></i> Assign
+                            </button>
+                        </div>
+                    </form>
+                <?php endif; ?>
+            </div>
+        </div>
+
         <!-- Contact & Profile Details -->
         <div class="card border-0 shadow-sm rounded-4 bg-white">
             <div class="card-header bg-white border-bottom py-3">

@@ -17,22 +17,210 @@ use App\Utilities\Security;
     </div>
 </div>
 
+<?php
+$myConverts = $myConverts ?? [];
+$careStats = $careStats ?? [];
+$isAdminOrPastor = $isAdminOrPastor ?? false;
+?>
+
+<!-- Souls Won & Discipleship Care Pipeline -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden" style="border: 1px solid rgba(79, 70, 229, 0.15) !important;">
+            <div class="card-header bg-white border-bottom py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <h5 class="card-title mb-1 fw-bold text-dark d-flex align-items-center">
+                        <i class="bx bx-heart text-danger me-2 font-size-20"></i> Souls Won & Assigned for Discipleship
+                    </h5>
+                    <p class="text-muted font-size-13 mb-0">Follow up with the souls you won or were assigned to you by your Pastor.</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="<?= AssetHelper::url('evangelism/create') ?>" class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold">
+                        <i class="bx bx-user-plus me-1"></i> Log New Soul Won
+                    </a>
+                    <a href="<?= AssetHelper::url('evangelism') ?>" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold">
+                        <i class="bx bx-book-open me-1"></i> Full Journal
+                    </a>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                <!-- Soul Care Metrics -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-2 col-6">
+                        <div class="p-3 rounded-3 bg-light text-center border">
+                            <h4 class="fw-bold text-primary mb-1"><?= (int)($careStats['total_converts'] ?? count($myConverts)) ?></h4>
+                            <small class="text-muted font-size-12">Total in Care</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <div class="p-3 rounded-3 bg-light text-center border">
+                            <h4 class="fw-bold text-info mb-1"><?= (int)($careStats['contacted_count'] ?? 0) ?></h4>
+                            <small class="text-muted font-size-12">1st Contact Done</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <div class="p-3 rounded-3 bg-light text-center border">
+                            <h4 class="fw-bold text-success mb-1"><?= (int)($careStats['attended_church_count'] ?? 0) ?></h4>
+                            <small class="text-muted font-size-12">Attended Service</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <div class="p-3 rounded-3 bg-light text-center border">
+                            <h4 class="fw-bold text-warning mb-1"><?= (int)($careStats['holy_ghost_baptized_count'] ?? 0) ?></h4>
+                            <small class="text-muted font-size-12">Holy Ghost Baptized</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <div class="p-3 rounded-3 bg-light text-center border">
+                            <h4 class="fw-bold text-primary mb-1"><?= (int)($careStats['water_baptized_count'] ?? 0) ?></h4>
+                            <small class="text-muted font-size-12">Water Baptized</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <div class="p-3 rounded-3 bg-light text-center border">
+                            <h4 class="fw-bold text-dark mb-1"><?= (int)($careStats['foundation_enrolled_count'] ?? 0) ?></h4>
+                            <small class="text-muted font-size-12">Foundation Class</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Converts Pipeline List -->
+                <?php if (empty($myConverts)): ?>
+                    <div class="text-center py-4 bg-light rounded-4">
+                        <i class="bx bx-user-x font-size-36 text-muted mb-2"></i>
+                        <h6 class="fw-bold text-dark">No souls assigned to you yet</h6>
+                        <p class="text-muted font-size-13 mb-3">When you win souls or your pastor assigns new converts to you, they will appear here for follow-up care.</p>
+                        <a href="<?= AssetHelper::url('evangelism/create') ?>" class="btn btn-sm btn-primary rounded-pill px-3">
+                            <i class="bx bx-plus me-1"></i> Record a Soul Won
+                        </a>
+                    </div>
+                <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Soul / Convert</th>
+                                    <th>Care Role</th>
+                                    <th>Decision</th>
+                                    <th>Contact & Actions</th>
+                                    <th>Spiritual Journey</th>
+                                    <th>Next Follow-up</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($myConverts as $c): ?>
+                                    <?php
+                                    $mCompleted = 0;
+                                    if (!empty($c['first_contact_done'])) $mCompleted++;
+                                    if (!empty($c['attended_service'])) $mCompleted++;
+                                    if (!empty($c['baptized_holy_ghost'])) $mCompleted++;
+                                    if (!empty($c['baptized_water'])) $mCompleted++;
+                                    if (!empty($c['foundation_class_enrolled'])) $mCompleted++;
+                                    if (!empty($c['department_joined'])) $mCompleted++;
+                                    $pct = round(($mCompleted / 6) * 100);
+                                    
+                                    $isWonByMe = (int)($c['soul_winner_id'] ?? 0) === (int)$this->session->get('user_id');
+                                    ?>
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-xs rounded-circle bg-soft-primary text-primary d-flex align-items-center justify-content-center me-2 font-size-12 fw-bold">
+                                                    <?= strtoupper(substr($c['full_name'], 0, 1)) ?>
+                                                </div>
+                                                <div>
+                                                    <a href="<?= AssetHelper::url('evangelism/converts/' . $c['id']) ?>" class="fw-bold text-dark text-decoration-none">
+                                                        <?= htmlspecialchars($c['full_name']) ?>
+                                                    </a>
+                                                    <div class="font-size-11 text-muted">
+                                                        Added <?= date('M d, Y', strtotime($c['created_at'])) ?>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <?php if ($isWonByMe): ?>
+                                                <span class="badge bg-soft-success text-success rounded-pill font-size-11 px-2 py-1">
+                                                    <i class="bx bx-trophy me-1"></i> Won by You
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="badge bg-soft-warning text-dark rounded-pill font-size-11 px-2 py-1">
+                                                    <i class="bx bx-user-check me-1"></i> Assigned by Pastor
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border font-size-11">
+                                                <?= ucfirst($c['decision_type'] ?? 'Salvation') ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($c['phone'])): ?>
+                                                <div class="d-flex gap-1">
+                                                    <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', $c['phone']) ?>" target="_blank" class="btn btn-sm btn-success py-0 px-2 rounded-pill font-size-11" title="WhatsApp Message">
+                                                        <i class="bx bxl-whatsapp"></i> Chat
+                                                    </a>
+                                                    <a href="tel:<?= htmlspecialchars($c['phone']) ?>" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill font-size-11" title="Call">
+                                                        <i class="bx bx-phone"></i> Call
+                                                    </a>
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="text-muted font-size-11">No phone</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td style="min-width: 140px;">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress flex-grow-1" style="height: 6px; border-radius: 4px;">
+                                                    <div class="progress-bar bg-success" style="width: <?= $pct ?>%"></div>
+                                                </div>
+                                                <span class="font-size-11 fw-bold text-muted"><?= $pct ?>%</span>
+                                            </div>
+                                            <small class="font-size-10 text-muted"><?= $mCompleted ?>/6 milestones</small>
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($c['next_followup_date'])): ?>
+                                                <span class="font-size-12 <?= ($c['next_followup_date'] <= date('Y-m-d')) ? 'text-danger fw-bold' : 'text-dark' ?>">
+                                                    <?= date('M d, Y', strtotime($c['next_followup_date'])) ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="text-muted font-size-12">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <a href="<?= AssetHelper::url('evangelism/converts/' . $c['id']) ?>" class="btn btn-sm btn-outline-primary rounded-pill px-3 font-size-12 fw-semibold">
+                                                <i class="bx bx-clipboard me-1"></i> Care Profile
+                                            </a>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-12">
         <div class="card">
             <div class="card-header">
                 <div class="row align-items-center">
                     <div class="col-md-6">
-                        <h4 class="card-title mb-0">All Follow-ups</h4>
-                        <p class="card-title-desc mb-0">Manage member follow-up activities</p>
+                        <h4 class="card-title mb-0"><?= $isAdminOrPastor ? 'General Church Member Follow-ups' : 'Assigned Pastoral Care Tasks' ?></h4>
+                        <p class="card-title-desc mb-0">Manage general member care and visitation tasks</p>
                     </div>
                     <div class="col-md-6 text-md-end">
+                        <?php if ($isAdminOrPastor): ?>
                         <a href="<?= AssetHelper::url('follow-ups/statistics') ?>" class="btn btn-outline-secondary me-2">
                             <i data-feather="bar-chart-2" class="me-1"></i> Statistics
                         </a>
                         <a href="<?= AssetHelper::url('follow-ups/create') ?>" class="btn btn-primary">
                             <i data-feather="plus-circle" class="me-1"></i> Create Follow-up
                         </a>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

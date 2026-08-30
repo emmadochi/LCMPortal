@@ -11,39 +11,40 @@ class FollowUpController extends BaseController {
     private $followUpModel;
     private $userModel;
     private $membershipTypeModel;
+    private $convertModel;
     
     public function __construct() {
         parent::__construct();
         $this->followUpModel = new FollowUp();
         $this->userModel = new User();
         $this->membershipTypeModel = new MembershipType();
-        
-        // Check permission - this should be accessible to directors and admins
-        // Allow access if user is admin or head pastor
-        $userRole = $this->session->get('user_role');
-        $isHeadPastor = $this->session->isHeadPastor();
-        
-        if ($userRole !== 'admin' && !$isHeadPastor) {
-            $this->authorize('manage_users');
-        }
+        $this->convertModel = new \App\Models\EvangelismConvert();
     }
     
     /**
-     * List all follow-ups
+     * List all follow-ups (Souls won/assigned + general member follow-ups)
      */
     public function index() {
+        $userId = (int)$this->session->get('user_id');
+        $isAdminOrPastor = $this->session->isAdmin() || $this->session->isHeadPastor() || $this->session->hasPermission('manage_users');
+
         $search = $this->request->get('search', '');
         $status = $this->request->get('status', '');
         $priority = $this->request->get('priority', '');
         $type = $this->request->get('type', '');
         $assignedTo = $this->request->get('assigned_to', '');
         
+        // Non-admin/pastor members see follow-ups assigned to them
+        if (!$isAdminOrPastor) {
+            $assignedTo = $userId;
+        }
+
         $followUps = $this->followUpModel->getFollowUpsWithDetails([
             'search' => $search,
             'status' => $status,
             'priority' => $priority,
             'type' => $type,
-            'assigned_to' => $assignedTo
+            'assigned_to' => $assignedTo ?: null
         ]);
         
         // Enrich display status: pending + past due => overdue
@@ -55,20 +56,27 @@ class FollowUpController extends BaseController {
         }
         unset($f);
         
+        // Fetch souls won & assigned to this user for discipleship follow-up
+        $myConverts = $this->convertModel->getConvertsBySoulWinner($userId);
+        $careStats = $this->convertModel->getSoulWinnerCareStats($userId);
+
         // Get filter options
         $types = $this->followUpModel->getFollowUpTypes();
         $priorities = ['urgent', 'high', 'medium', 'low'];
         $statuses = ['pending', 'completed', 'overdue'];
-        $members = $this->userModel->getActiveMembers(); // For assigned_to filter
+        $members = $isAdminOrPastor ? $this->userModel->getActiveMembers() : [];
         
         $this->render('follow-ups/index', [
-            'title' => 'Follow-up Management',
-            'pageTitle' => 'Follow-up Management',
+            'title' => 'Follow-up & Soul Care Pipeline',
+            'pageTitle' => $isAdminOrPastor ? 'Follow-up & Pastoral Care' : 'My Follow-up Pipeline',
             'followUps' => $followUps,
+            'myConverts' => $myConverts,
+            'careStats' => $careStats,
             'types' => $types,
             'priorities' => $priorities,
             'statuses' => $statuses,
             'members' => $members,
+            'isAdminOrPastor' => $isAdminOrPastor,
             'filters' => [
                 'search' => $search,
                 'status' => $status,
