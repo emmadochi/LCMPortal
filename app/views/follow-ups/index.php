@@ -158,9 +158,9 @@ $isAdminOrPastor = $isAdminOrPastor ?? false;
                                         <td>
                                             <?php if (!empty($c['phone'])): ?>
                                                 <div class="d-flex gap-1">
-                                                    <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', $c['phone']) ?>" target="_blank" class="btn btn-sm btn-success py-0 px-2 rounded-pill font-size-11" title="WhatsApp Message">
+                                                    <button type="button" onclick="openWhatsAppTemplateModal('<?= htmlspecialchars(addslashes($c['full_name'])) ?>', '<?= htmlspecialchars(addslashes($c['phone'])) ?>')" class="btn btn-sm btn-success py-0 px-2 rounded-pill font-size-11" title="1-Click WhatsApp Follow-up">
                                                         <i class="bx bxl-whatsapp"></i> Chat
-                                                    </a>
+                                                    </button>
                                                     <a href="tel:<?= htmlspecialchars($c['phone']) ?>" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill font-size-11" title="Call">
                                                         <i class="bx bx-phone"></i> Call
                                                     </a>

@@ -437,11 +437,11 @@ function updateConvertPreview(convertId) {
     const btnContainer = document.getElementById('previewActionButtons');
     btnContainer.innerHTML = '';
     if (phone) {
-        const cleanPhone = phone.replace(/[^0-9]/g, '');
+        const convertName = opt.text ? opt.text.split(' - ')[0].replace(/\(.*?\)/, '').trim() : 'Convert';
         btnContainer.innerHTML = `
-            <a href="https://wa.me/${cleanPhone}" target="_blank" class="btn btn-sm btn-success py-0 px-2 rounded-pill font-size-11">
+            <button type="button" onclick="openWhatsAppTemplateModal('${convertName.replace(/'/g, "\\'")}', '${phone}')" class="btn btn-sm btn-success py-0 px-2 rounded-pill font-size-11">
                 <i class="bx bxl-whatsapp"></i> Chat
-            </a>
+            </button>
             <a href="tel:${phone}" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill font-size-11">
                 <i class="bx bx-phone"></i> Call
             </a>

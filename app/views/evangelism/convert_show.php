@@ -43,9 +43,9 @@ $milestonePercent = round(($milestonesCompleted / $milestonesTotal) * 100);
 
                     <div class="mt-3 mt-md-0 d-flex flex-wrap gap-2">
                         <?php if (!empty($convert['phone'])): ?>
-                            <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', $convert['phone']) ?>" target="_blank" class="btn btn-success fw-semibold rounded-pill px-3 py-2 font-size-13 shadow-sm">
-                                <i class="bx bxl-whatsapp me-1"></i> WhatsApp
-                            </a>
+                            <button type="button" onclick="openWhatsAppTemplateModal('<?= htmlspecialchars(addslashes($convert['full_name'])) ?>', '<?= htmlspecialchars(addslashes($convert['phone'])) ?>')" class="btn btn-success fw-semibold rounded-pill px-3 py-2 font-size-13 shadow-sm">
+                                <i class="bx bxl-whatsapp me-1"></i> WhatsApp Message
+                            </button>
                             <a href="tel:<?= htmlspecialchars($convert['phone']) ?>" class="btn btn-warning text-dark fw-bold rounded-pill px-3 py-2 font-size-13 shadow-sm">
                                 <i class="bx bx-phone-call me-1"></i> Call Now
                             </a>

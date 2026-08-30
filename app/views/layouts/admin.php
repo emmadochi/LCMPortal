@@ -520,5 +520,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <?= $pageJs ?? '' ?>
 
+<?php include __DIR__ . '/../components/whatsapp_modal.php'; ?>
+
 </body>
 </html>
