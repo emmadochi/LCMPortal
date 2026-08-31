@@ -30,10 +30,32 @@ $selectedMonth = $selectedMonth ?? 0;
 .fin-header-card {
     background: #ffffff;
     border-radius: var(--fin-radius);
-    padding: 22px 28px;
+    padding: 20px 24px;
     border: 1px solid var(--fin-border);
     box-shadow: 0 4px 20px rgba(0,0,0,0.03);
     margin-bottom: 24px;
+}
+
+.fin-filter-toolbar {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 10px 14px;
+}
+
+.fin-select-group .input-group-text {
+    border-color: #e2e8f0;
+    font-size: 0.85rem;
+}
+.fin-select-group .form-select {
+    border-color: #e2e8f0;
+    height: 36px;
+    font-size: 0.82rem;
+    color: #1e293b;
+}
+.fin-select-group .form-select:focus {
+    border-color: #4f46e5;
+    box-shadow: none;
 }
 
 .fin-metric-card {
@@ -166,66 +188,86 @@ $selectedMonth = $selectedMonth ?? 0;
 <div class="container-fluid p-0 fin-dashboard">
     <!-- Header Card -->
     <div class="fin-header-card">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <!-- Top Row: Breadcrumbs, Title & Quick Actions -->
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-3">
             <div>
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb mb-1 small">
                         <li class="breadcrumb-item"><a href="<?= AssetHelper::url('') ?>" class="text-decoration-none text-muted">Dashboard</a></li>
                         <li class="breadcrumb-item"><a href="<?= AssetHelper::url('finance') ?>" class="text-decoration-none text-muted">Finances</a></li>
-                        <li class="breadcrumb-item active text-info fw-semibold">Cashflow & Trends</li>
+                        <li class="breadcrumb-item active text-primary fw-semibold">Cashflow & Trends</li>
                     </ol>
                 </nav>
-                <h3 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
-                    <i class="bx bx-line-chart text-info"></i> Cashflow Statement & Year-over-Year Analytics
+                <h3 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="bx bx-line-chart text-primary"></i> Cashflow Statement & Analytics
                 </h3>
-                
-                <!-- Dynamic Active Church & Period Context Badge -->
-                <div id="churchContextContainer" class="d-flex align-items-center flex-wrap gap-2 mt-2">
-                    <span class="badge <?= !empty($currentChurch) ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-info-subtle text-info border border-info-subtle' ?> px-3 py-1.5 rounded-pill font-size-12 fw-semibold" id="churchContextBadge">
-                        <i class="bx <?= !empty($currentChurch) ? 'bx-church' : 'bx-globe' ?> me-1 align-middle font-size-14"></i>
-                        <span id="churchBadgeText"><?= !empty($currentChurch) ? 'Active Branch: ' . htmlspecialchars($currentChurch['name']) : 'Consolidated: All Churches (Global)' ?></span>
-                    </span>
-                    <span class="badge bg-light text-muted border px-2.5 py-1.5 rounded-pill font-size-12" id="periodContextBadge">
-                        <i class="bx bx-calendar me-1"></i> <span id="periodBadgeText"><?= htmlspecialchars($kpi['period_label'] ?? 'Full Year ' . $selectedYear) ?></span>
-                    </span>
-                </div>
             </div>
             
-            <!-- AJAX Filter Form -->
-            <form id="cashflowFilterForm" method="GET" class="d-flex gap-2 align-items-center flex-wrap" onsubmit="return false;">
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary rounded-pill px-3 font-size-12 fw-semibold">
+                    <i class="bx bx-printer me-1"></i> Print Statement
+                </button>
+            </div>
+        </div>
+
+        <!-- Bottom Row: Sleek Unified Inline Filter Toolbar -->
+        <div class="fin-filter-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center flex-wrap gap-2 flex-grow-1">
+                <!-- Active Branch / Consolidated Scope Badge -->
+                <div id="churchContextBadge" class="d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-pill <?= !empty($currentChurch) ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-info-subtle text-info border border-info-subtle' ?> font-size-12 fw-semibold">
+                    <i class="bx <?= !empty($currentChurch) ? 'bx-church' : 'bx-globe' ?> font-size-14"></i>
+                    <span id="churchBadgeText"><?= !empty($currentChurch) ? 'Branch: ' . htmlspecialchars($currentChurch['name']) : 'Consolidated (All Branches)' ?></span>
+                </div>
+
+                <!-- Church Selector Dropdown -->
                 <?php if ($this->session->hasPermission('manage_users') && !empty($churches)): ?>
-                    <select id="filterChurch" name="church_id" class="form-select form-select-sm rounded-pill font-size-13 shadow-none">
-                        <option value="" <?= empty($churchId) ? 'selected' : '' ?>>All Churches (Global)</option>
-                        <?php foreach ($churches as $c): ?>
-                            <option value="<?= $c['id'] ?>" <?= ((string)$churchId === (string)$c['id']) ? 'selected' : '' ?>><?= htmlspecialchars($c['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <div class="input-group input-group-sm fin-select-group" style="width: auto; min-width: 175px;">
+                        <span class="input-group-text bg-white border-end-0 text-muted rounded-start-pill ps-2.5 pe-1"><i class="bx bx-church"></i></span>
+                        <select id="filterChurch" name="church_id" class="form-select form-select-sm border-start-0 rounded-end-pill font-size-12 fw-medium bg-white shadow-none">
+                            <option value="" <?= empty($churchId) ? 'selected' : '' ?>>All Churches (Global)</option>
+                            <?php foreach ($churches as $c): ?>
+                                <option value="<?= $c['id'] ?>" <?= ((string)$churchId === (string)$c['id']) ? 'selected' : '' ?>><?= htmlspecialchars($c['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                 <?php endif; ?>
 
-                <select id="filterYear" name="year" class="form-select form-select-sm rounded-pill font-size-13 shadow-none">
-                    <?php for ($y = date('Y'); $y >= date('Y') - 4; $y--): ?>
-                        <option value="<?= $y ?>" <?= ($selectedYear == $y) ? 'selected' : '' ?>><?= $y ?> Fiscal Year</option>
-                    <?php endfor; ?>
-                </select>
+                <!-- Fiscal Year Selector Dropdown -->
+                <div class="input-group input-group-sm fin-select-group" style="width: auto; min-width: 135px;">
+                    <span class="input-group-text bg-white border-end-0 text-muted rounded-start-pill ps-2.5 pe-1"><i class="bx bx-calendar"></i></span>
+                    <select id="filterYear" name="year" class="form-select form-select-sm border-start-0 rounded-end-pill font-size-12 fw-medium bg-white shadow-none">
+                        <?php for ($y = date('Y'); $y >= date('Y') - 4; $y--): ?>
+                            <option value="<?= $y ?>" <?= ($selectedYear == $y) ? 'selected' : '' ?>><?= $y ?> Fiscal Year</option>
+                        <?php endfor; ?>
+                    </select>
+                </div>
 
-                <select id="filterMonth" name="month" class="form-select form-select-sm rounded-pill font-size-13 shadow-none">
-                    <option value="0" <?= empty($selectedMonth) ? 'selected' : '' ?>>All Months (Full Year)</option>
-                    <?php
-                    $monthNames = [1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April', 5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August', 9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'];
-                    foreach ($monthNames as $mNum => $mName):
-                    ?>
-                        <option value="<?= $mNum ?>" <?= ((int)$selectedMonth === $mNum) ? 'selected' : '' ?>><?= $mName ?></option>
-                    <?php endforeach; ?>
-                </select>
-                
+                <!-- Month Selector Dropdown -->
+                <div class="input-group input-group-sm fin-select-group" style="width: auto; min-width: 155px;">
+                    <span class="input-group-text bg-white border-end-0 text-muted rounded-start-pill ps-2.5 pe-1"><i class="bx bx-calendar-event"></i></span>
+                    <select id="filterMonth" name="month" class="form-select form-select-sm border-start-0 rounded-end-pill font-size-12 fw-medium bg-white shadow-none">
+                        <option value="0" <?= empty($selectedMonth) ? 'selected' : '' ?>>All Months (Full Year)</option>
+                        <?php
+                        $monthNames = [1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April', 5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August', 9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'];
+                        foreach ($monthNames as $mNum => $mName):
+                        ?>
+                            <option value="<?= $mNum ?>" <?= ((int)$selectedMonth === $mNum) ? 'selected' : '' ?>><?= $mName ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- Loading Spinner -->
                 <div id="filterLoadingSpinner" class="spinner-border spinner-border-sm text-primary ms-1" style="display: none;" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
+            </div>
 
-                <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
-                    <i class="bx bx-printer me-1"></i> Print Statement
-                </button>
-            </form>
+            <!-- Active Period Badge -->
+            <div class="d-flex align-items-center">
+                <span class="badge bg-white text-dark border px-3 py-1.5 rounded-pill font-size-12 shadow-sm" id="periodContextBadge">
+                    <i class="bx bx-time-five text-primary me-1"></i> <span id="periodBadgeText"><?= htmlspecialchars($kpi['period_label'] ?? 'Full Year ' . $selectedYear) ?></span>
+                </span>
+            </div>
         </div>
     </div>
 
