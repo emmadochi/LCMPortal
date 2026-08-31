@@ -586,14 +586,16 @@ function performCashflowAjax() {
     if (year) params.append('year', year);
     if (month && month !== '0') params.append('month', month);
 
-    var requestUrl = window.location.pathname + '?' + params.toString();
+    var baseUrl = '<?= AssetHelper::url('finance/cashflow') ?>';
+    var requestUrl = baseUrl + '?' + params.toString();
 
     // Update browser URL without reloading
     history.pushState(null, '', requestUrl);
 
     fetch(requestUrl, {
         headers: {
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
         }
     })
     .then(function(res) { return res.json(); })
