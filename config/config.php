@@ -21,7 +21,7 @@ return [
     ],
 
     'mail' => [
-        'from_email' => $_ENV['MAIL_FROM_EMAIL'] ?? getenv('MAIL_FROM_EMAIL') ?: 'noreply@churchportal.local',
-        'from_name'  => $_ENV['MAIL_FROM_NAME']  ?? getenv('MAIL_FROM_NAME')  ?: 'Church Portal',
+        'from_email' => $_ENV['MAIL_FROM_EMAIL'] ?? getenv('MAIL_FROM_EMAIL') ?: 'noreply@lcmportal.org',
+        'from_name'  => $_ENV['MAIL_FROM_NAME']  ?? getenv('MAIL_FROM_NAME')  ?: 'LCM Portal',
     ]
 ];

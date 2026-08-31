@@ -6,7 +6,7 @@ $csrfToken = Security::generateCSRFToken();
 ?>
 <div class="text-center">
     <h5 class="mb-0">Welcome Back !</h5>
-    <p class="text-muted mt-2">Sign in to continue to Church Portal.</p>
+    <p class="text-muted mt-2">Sign in to continue to LCM Portal.</p>
 </div>
 <form class="mt-4 pt-2" method="POST" action="<?= AssetHelper::url('login') ?>">
     <input type="hidden" name="_token" value="<?= htmlspecialchars($csrfToken) ?>">

@@ -7,7 +7,7 @@ $title = $title ?? 'Login';
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title><?= htmlspecialchars($title) ?> | Church Portal</title>
+    <title><?= htmlspecialchars($title) ?> | LCM Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="<?= \App\Utilities\Security::generateCSRFToken() ?>">
     <meta content="Church Reporting & Administrative Portal" name="description" />
@@ -49,7 +49,7 @@ $title = $title ?? 'Login';
                                 <div class="mb-4 mb-md-5 text-center">
                                     <a href="<?= AssetHelper::url('/') ?>" class="d-block auth-logo">
                                         <img src="<?= AssetHelper::image('logo-sm.svg') ?>" alt="" height="28"> 
-                                        <span class="logo-txt">Church Portal</span>
+                                        <span class="logo-txt">LCM Portal</span>
                                     </a>
                                 </div>
                                 <div class="auth-content my-auto">
@@ -59,7 +59,7 @@ $title = $title ?? 'Login';
                                     <?php endif; ?>
                                 </div>
                                 <div class="mt-4 mt-md-5 text-center">
-                                    <p class="mb-0">© <script>document.write(new Date().getFullYear())</script> Church Portal. 
+                                    <p class="mb-0">© <script>document.write(new Date().getFullYear())</script> LCM Portal. 
                                     Crafted with <i class="mdi mdi-heart text-danger"></i> for Church Administration</p>
                                 </div>
                             </div>
@@ -87,7 +87,7 @@ $title = $title ?? 'Login';
                             <div class="col-xl-7">
                                 <div class="p-0 p-sm-4 px-xl-0">
                                     <div class="text-center text-white">
-                                        <h3 class="mb-3">Welcome to Church Portal</h3>
+                                        <h3 class="mb-3">Welcome to LCM Portal</h3>
                                         <p class="font-size-16">Manage your church operations efficiently</p>
                                     </div>
                                 </div>

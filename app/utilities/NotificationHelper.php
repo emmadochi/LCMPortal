@@ -52,8 +52,8 @@ class NotificationHelper {
      */
     public static function sendEmail($to, $subject, $message, $isHtml = true) {
         $config = require __DIR__ . '/../../config/config.php';
-        $fromEmail = $config['mail']['from_email'] ?? 'noreply@churchportal.local';
-        $fromName  = $config['mail']['from_name'] ?? 'Church Portal';
+        $fromEmail = $config['mail']['from_email'] ?? 'noreply@lcmportal.org';
+        $fromName  = $config['mail']['from_name'] ?? 'LCM Portal';
         $headers = "MIME-Version: 1.0" . "\r\n";
         if ($isHtml) {
             $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";

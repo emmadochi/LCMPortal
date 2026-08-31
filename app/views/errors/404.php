@@ -5,7 +5,7 @@ use App\Utilities\AssetHelper;
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>404 Error | Church Portal</title>
+    <title>404 Error | LCM Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <!-- App favicon -->

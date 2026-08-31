@@ -22,7 +22,7 @@ $userAvatarSrc = $session->get('user_profile_picture')
                     </span>
                     <span class="logo-lg">
                         <img src="<?= AssetHelper::image('logo-sm.svg') ?>" alt="" height="24"> 
-                        <span class="logo-txt">Church Portal</span>
+                        <span class="logo-txt">LCM Portal</span>
                     </span>
                 </a>
 
@@ -32,7 +32,7 @@ $userAvatarSrc = $session->get('user_profile_picture')
                     </span>
                     <span class="logo-lg">
                         <img src="<?= AssetHelper::image('logo-sm.svg') ?>" alt="" height="24"> 
-                        <span class="logo-txt">Church Portal</span>
+                        <span class="logo-txt">LCM Portal</span>
                     </span>
                 </a>
             </div>

@@ -1,13 +1,13 @@
 <?php
 use App\Utilities\AssetHelper;
 
-$title = $title ?? 'Church Portal';
+$title = $title ?? 'LCM Portal';
 ?>
 <!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title><?= htmlspecialchars($title) ?> | Church Portal</title>
+    <title><?= htmlspecialchars($title) ?> | LCM Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta content="Church Reporting & Administrative Portal" name="description" />
     

@@ -88,7 +88,7 @@ use App\Utilities\AssetHelper;
                         </span>
                         <span class="logo-lg">
                             <img src="<?= AssetHelper::image('logo-sm.svg') ?>" alt="" height="24"> 
-                            <span class="logo-txt">Church Portal</span>
+                            <span class="logo-txt">LCM Portal</span>
                         </span>
                     </a>
 
@@ -98,7 +98,7 @@ use App\Utilities\AssetHelper;
                         </span>
                         <span class="logo-lg">
                             <img src="<?= AssetHelper::image('logo-sm.svg') ?>" alt="" height="24"> 
-                            <span class="logo-txt">Church Portal</span>
+                            <span class="logo-txt">LCM Portal</span>
                         </span>
                     </a>
                 </div>
@@ -459,7 +459,7 @@ use App\Utilities\AssetHelper;
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-sm-6">
-                        <script>document.write(new Date().getFullYear())</script> © Church Admin Portal
+                        <script>document.write(new Date().getFullYear())</script> © LCM Portal
                     </div>
                     <div class="col-sm-6">
                         <div class="text-sm-end d-none d-sm-block">

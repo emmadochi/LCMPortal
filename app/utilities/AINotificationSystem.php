@@ -216,7 +216,7 @@ class AINotificationSystem {
         // In production, integrate with PHPMailer or similar
         $headers = "MIME-Version: 1.0\r\n";
         $headers .= "Content-type:text/html;charset=UTF-8\r\n";
-        $headers .= "From: Church Portal <noreply@church.com>\r\n";
+        $headers .= "From: LCM Portal <noreply@lcmportal.org>\r\n";
         
         try {
             return mail($user['email'], $subject, $message, $headers);
