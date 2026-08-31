@@ -704,9 +704,33 @@ $router->group('/admin/password-reset-requests', function($router) {
     $router->post('/{id}/reject', 'AuthController@rejectPasswordReset');
 }, [AuthMiddleware::class, new \App\Middleware\RoleMiddleware('admin')]);
 
+// ── Dynamic Departmental Reports & Form Builder Routes ─────────────────────────
+$router->group('/unit-reports', function($router) {
+    // Form Builder & Template Management (Directors, Pastors, Admins)
+    $router->get('/templates', 'UnitReportBuilderController@index');
+    $router->get('/templates/builder', 'UnitReportBuilderController@builder');
+    $router->get('/templates/builder/{id}', 'UnitReportBuilderController@builder');
+    $router->post('/templates/save', 'UnitReportBuilderController@save');
+    $router->get('/templates/preset/{key}', 'UnitReportBuilderController@getPresetJson');
+
+    // Dynamic Member Submissions
+    $router->get('/submit/{template_id}', 'UnitReportSubmissionController@submitForm');
+    $router->post('/submit/{template_id}', 'UnitReportSubmissionController@processSubmission');
+
+    // Submissions Review Ledger & Cross-Branch Oversight
+    $router->get('/submissions', 'UnitReportSubmissionController@index');
+    $router->get('/submissions/export', 'UnitReportSubmissionController@export');
+    $router->get('/submissions/{id}', 'UnitReportSubmissionController@show');
+    $router->post('/submissions/{id}/status', 'UnitReportSubmissionController@updateStatus');
+
+    // Pastoral Compliance Matrix
+    $router->get('/pastor-matrix', 'UnitReportSubmissionController@pastorMatrix');
+}, [AuthMiddleware::class]);
+
 // Unauthorized page
 $router->get('/unauthorized', function() {
     http_response_code(403);
     echo "Unauthorized access";
     exit;
 });
+

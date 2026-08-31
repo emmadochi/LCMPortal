@@ -312,6 +312,19 @@ use App\Utilities\AssetHelper;
                             <?php endforeach; ?>
                             <?php endif; ?>
                         </ul>
+                    <!-- Dynamic Departmental Reporting & Form Builder -->
+                    <li>
+                        <a href="javascript: void(0);" class="has-arrow waves-effect">
+                            <i class="bx bx-file-find"></i>
+                            <span key="t-dept-reports">Department Reports</span>
+                        </a>
+                        <ul class="sub-menu" aria-expanded="false">
+                            <li><a href="<?= AssetHelper::url('unit-reports/submissions') ?>" key="t-report-submissions"><i class="bx bx-check-shield me-1"></i> Submissions & Reviews</a></li>
+                            <?php if ($this->session->hasPermission('manage_users') || $this->session->isHeadPastor() || $this->session->isDirector()): ?>
+                            <li><a href="<?= AssetHelper::url('unit-reports/templates') ?>" key="t-report-forms"><i class="bx bx-layout me-1"></i> Form Designer & Templates</a></li>
+                            <li><a href="<?= AssetHelper::url('unit-reports/pastor-matrix') ?>" key="t-report-compliance"><i class="bx bx-grid-alt me-1"></i> Compliance Matrix</a></li>
+                            <?php endif; ?>
+                        </ul>
                     </li>
 
                     <?php if ($this->session->hasPermission('manage_users') || $this->session->isHeadPastor()): ?>
