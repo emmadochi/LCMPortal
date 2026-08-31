@@ -35,8 +35,11 @@ $isAdminOrPastor = $isAdminOrPastor ?? false;
                     <p class="text-muted font-size-13 mb-0">Follow up with the souls you won or were assigned to you by your Pastor.</p>
                 </div>
                 <div class="d-flex gap-2">
+                    <a href="<?= AssetHelper::url('evangelism/converts-export') ?>" class="btn btn-sm btn-outline-success rounded-pill px-3 fw-semibold">
+                        <i class="bx bx-download me-1"></i> Export CSV
+                    </a>
                     <a href="<?= AssetHelper::url('evangelism/create') ?>" class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold">
-                        <i class="bx bx-user-plus me-1"></i> Log New Soul Won
+                        <i class="bx bx-user-plus me-1"></i> Log / Record Follow-Up
                     </a>
                     <a href="<?= AssetHelper::url('evangelism') ?>" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold">
                         <i class="bx bx-book-open me-1"></i> Full Journal
